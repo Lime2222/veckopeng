@@ -194,24 +194,6 @@ pageNav($user['name'], $child['id']);
   </div>
   <?php endif; ?>
 
-  <!-- Custom adjustment -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4" x-data="{ open: false }">
-    <button @click="open=!open" class="w-full flex items-center justify-between px-4 py-3.5">
-      <span class="font-semibold text-gray-900">Anpassat avdrag / bonus</span>
-      <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-    </button>
-    <div x-show="open" x-cloak class="px-4 pb-4 border-t border-gray-50 pt-3">
-      <div class="flex gap-2">
-        <input type="number" id="custom-amount" placeholder="t.ex. -10 eller +5" step="0.5"
-               class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-        <input type="text" id="custom-desc" placeholder="Anledning"
-               class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-        <button onclick="addCustomAdjustment(<?= $child['id'] ?>, '<?= addslashes($selDate) ?>')"
-                class="touch-btn px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors">+</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Week adjustments list -->
   <?php if (!empty($weekAdj)): ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
@@ -349,13 +331,6 @@ async function addAdjustment(childId, typeId, date, desc, amount) {
   location.reload();
 }
 
-async function addCustomAdjustment(childId, date) {
-  const amount = parseFloat(document.getElementById('custom-amount').value);
-  const desc   = document.getElementById('custom-desc').value.trim();
-  if (isNaN(amount)) { alert('Ange ett belopp, t.ex. -10 eller +5'); return; }
-  if (!desc) { alert('Ange en anledning'); return; }
-  await addAdjustment(childId, null, date, desc, amount);
-}
 
 async function deleteAdjustment(adjId, childId) {
   if (!confirm('Ta bort denna händelse?')) return;
