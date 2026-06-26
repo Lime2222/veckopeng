@@ -276,6 +276,23 @@ pageNav($user['name'], $child['id']);
         </button>
         <?php endforeach; ?>
       </div>
+
+      <?php if (!empty($child['swish_number'])):
+        $swishNum = preg_replace('/[^0-9]/', '', $child['swish_number']);
+        $swishData = urlencode(json_encode([
+            'version' => 1,
+            'payee'   => ['value' => $swishNum, 'editable' => false],
+            'amount'  => ['value' => (float)$summary['final_amount'], 'editable' => false],
+            'message' => ['value' => 'Veckopeng v.' . date('W', strtotime($ws)), 'editable' => true],
+        ]));
+      ?>
+      <a href="swish://payment?data=<?= $swishData ?>"
+         class="mt-2 flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#00A95C] hover:bg-[#009050] text-white font-bold text-base transition-colors">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        Betala med Swish
+      </a>
+      <?php endif; ?>
+    </div>
     </div>
     <?php endif; ?>
   </div>

@@ -52,6 +52,13 @@ pageNav($user['name'], 0);
                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
       </div>
       <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Swish-nummer (barnets)</label>
+        <input type="tel" name="swish_number" value="<?= htmlspecialchars($child['swish_number'] ?? '') ?>"
+               placeholder="t.ex. 0701234567"
+               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
+        <p class="text-xs text-gray-400 mt-1">Öppnar Swish med rätt belopp vid utbetalning</p>
+      </div>
+      <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Veckopeng (kr)</label>
         <input type="number" name="weekly_amount" value="<?= $child['weekly_amount'] ?>" min="0" step="0.5" required
                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
