@@ -10,8 +10,9 @@ $childId = (int)($_POST['child_id'] ?? 0);
 $dtId    = (int)($_POST['deduction_type_id'] ?? 0);
 
 if (!$childId || !$dtId) { header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('DELETE FROM deduction_types WHERE id = ? AND child_id = ?')->execute([$dtId, $childId]);
+db()->prepare('DELETE FROM deduction_types WHERE id = ? AND user_id = ?')->execute([$dtId, $familyUserId]);
 $_SESSION['flash_success'] = 'Avdrag/bonus borttaget.';
 header("Location: /settings.php?id=$childId");

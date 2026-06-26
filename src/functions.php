@@ -43,7 +43,7 @@ function getChild(int $childId): array|false {
 }
 
 function getRequirements(int $childId, bool $activeOnly = true): array {
-    $sql = 'SELECT * FROM requirements WHERE child_id = ?';
+    $sql = 'SELECT * FROM requirements WHERE user_id = (SELECT user_id FROM children WHERE id = ?)';
     if ($activeOnly) $sql .= ' AND active = true';
     $sql .= ' ORDER BY sort_order, id';
     $stmt = db()->prepare($sql);
@@ -52,7 +52,7 @@ function getRequirements(int $childId, bool $activeOnly = true): array {
 }
 
 function getDeductionTypes(int $childId, bool $activeOnly = true): array {
-    $sql = 'SELECT * FROM deduction_types WHERE child_id = ?';
+    $sql = 'SELECT * FROM deduction_types WHERE user_id = (SELECT user_id FROM children WHERE id = ?)';
     if ($activeOnly) $sql .= ' AND active = true';
     $sql .= ' ORDER BY amount, id';
     $stmt = db()->prepare($sql);
@@ -90,7 +90,7 @@ function getDayLogs(int $childId, string $date): array {
                ON dl.requirement_id = r.id
               AND dl.child_id = ?
               AND dl.log_date = ?
-        WHERE r.child_id = ? AND r.active = true
+        WHERE r.user_id = (SELECT user_id FROM children WHERE id = ?) AND r.active = true
         ORDER BY r.sort_order, r.id
     ');
     $stmt->execute([$childId, $ws, $we, $childId, $ws, $we, $childId, $date, $childId]);

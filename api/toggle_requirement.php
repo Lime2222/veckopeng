@@ -10,10 +10,11 @@ $childId = (int)($_POST['child_id'] ?? 0);
 $reqId   = (int)($_POST['requirement_id'] ?? 0);
 
 if (!$childId || !$reqId) { header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-$stmt = db()->prepare('SELECT active FROM requirements WHERE id = ? AND child_id = ?');
-$stmt->execute([$reqId, $childId]);
+$stmt = db()->prepare('SELECT active FROM requirements WHERE id = ? AND user_id = ?');
+$stmt->execute([$reqId, $familyUserId]);
 $req = $stmt->fetch();
 if (!$req) { header("Location: /settings.php?id=$childId"); exit; }
 

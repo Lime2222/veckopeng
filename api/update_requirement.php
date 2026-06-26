@@ -11,8 +11,9 @@ $reqId   = (int)($_POST['requirement_id'] ?? 0);
 $name    = trim($_POST['name'] ?? '');
 
 if (!$childId || !$reqId || !$name) { $_SESSION['flash_error'] = 'Ogiltiga uppgifter.'; header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('UPDATE requirements SET name = ? WHERE id = ? AND child_id = ?')->execute([$name, $reqId, $childId]);
+db()->prepare('UPDATE requirements SET name = ? WHERE id = ? AND user_id = ?')->execute([$name, $reqId, $familyUserId]);
 $_SESSION['flash_success'] = 'Krav uppdaterat.';
 header("Location: /settings.php?id=$childId");

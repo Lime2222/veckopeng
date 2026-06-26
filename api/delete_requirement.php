@@ -10,8 +10,9 @@ $childId = (int)($_POST['child_id'] ?? 0);
 $reqId   = (int)($_POST['requirement_id'] ?? 0);
 
 if (!$childId || !$reqId) { header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('DELETE FROM requirements WHERE id = ? AND child_id = ?')->execute([$reqId, $childId]);
+db()->prepare('DELETE FROM requirements WHERE id = ? AND user_id = ?')->execute([$reqId, $familyUserId]);
 $_SESSION['flash_success'] = 'Krav borttaget.';
 header("Location: /settings.php?id=$childId");

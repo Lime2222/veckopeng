@@ -38,6 +38,12 @@ ALTER TABLE requirements ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'chec
 ALTER TABLE requirements ADD COLUMN IF NOT EXISTS weekly_target_minutes INTEGER;
 ALTER TABLE daily_logs   ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
+-- Migrate to family-level requirements (user_id replaces child_id as grouping key)
+ALTER TABLE requirements    ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE deduction_types ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+UPDATE requirements    r SET user_id = c.user_id FROM children c WHERE c.id = r.child_id AND r.user_id IS NULL;
+UPDATE deduction_types d SET user_id = c.user_id FROM children c WHERE c.id = d.child_id AND d.user_id IS NULL;
+
 CREATE TABLE IF NOT EXISTS deduction_types (
     id         SERIAL PRIMARY KEY,
     child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,

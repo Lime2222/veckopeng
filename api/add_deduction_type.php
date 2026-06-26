@@ -11,8 +11,9 @@ $name    = trim($_POST['name'] ?? '');
 $amount  = (float)($_POST['amount'] ?? 0);
 
 if (!$childId || !$name || $amount == 0) { $_SESSION['flash_error'] = 'Fyll i alla fält.'; header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('INSERT INTO deduction_types (child_id, name, amount) VALUES (?, ?, ?)')->execute([$childId, $name, $amount]);
+db()->prepare('INSERT INTO deduction_types (user_id, name, amount) VALUES (?, ?, ?)')->execute([$familyUserId, $name, $amount]);
 $_SESSION['flash_success'] = 'Lagt till: ' . $name . ' (' . ($amount > 0 ? '+' : '') . number_format($amount, 2, ',', ' ') . ' kr).';
 header("Location: /settings.php?id=$childId");

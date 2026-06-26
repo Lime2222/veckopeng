@@ -12,9 +12,10 @@ $frequency = $_POST['frequency'] ?? 'daily';
 
 if (!in_array($frequency, ['daily', 'weekly'])) $frequency = 'daily';
 if (!$childId || !$reqId) { header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('UPDATE requirements SET frequency = ? WHERE id = ? AND child_id = ?')
-    ->execute([$frequency, $reqId, $childId]);
+db()->prepare('UPDATE requirements SET frequency = ? WHERE id = ? AND user_id = ?')
+    ->execute([$frequency, $reqId, $familyUserId]);
 
 header("Location: /settings.php?id=$childId");

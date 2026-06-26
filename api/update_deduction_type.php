@@ -12,8 +12,9 @@ $name    = trim($_POST['name'] ?? '');
 $amount  = (float)($_POST['amount'] ?? 0);
 
 if (!$childId || !$dtId || !$name || $amount == 0) { $_SESSION['flash_error'] = 'Ogiltiga uppgifter.'; header("Location: /settings.php?id=$childId"); exit; }
-requireChildOwnership($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+$familyUserId = (int)$child['user_id'];
 
-db()->prepare('UPDATE deduction_types SET name = ?, amount = ? WHERE id = ? AND child_id = ?')->execute([$name, $amount, $dtId, $childId]);
+db()->prepare('UPDATE deduction_types SET name = ?, amount = ? WHERE id = ? AND user_id = ?')->execute([$name, $amount, $dtId, $familyUserId]);
 $_SESSION['flash_success'] = 'Avdrag/bonus uppdaterat.';
 header("Location: /settings.php?id=$childId");

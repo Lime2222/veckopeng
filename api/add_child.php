@@ -22,24 +22,34 @@ $childId = (int)$stmt->fetchColumn();
 $db->prepare('INSERT INTO family_members (child_id, user_id, role) VALUES (?, ?, \'owner\')')->execute([$childId, $user['id']]);
 
 // Seed default requirements
-$defaults = [
-    ['Städa rummet',  'checkbox', 'weekly', null],
-    ['Läsa böcker',   'minutes',  'weekly', 120],   // 2 timmar/vecka
-];
-$sort = 0;
-foreach ($defaults as [$rname, $rtype, $freq, $targetMin]) {
-    $db->prepare('INSERT INTO requirements (child_id, name, sort_order, type, frequency, weekly_target_minutes) VALUES (?, ?, ?, ?, ?, ?)')
-       ->execute([$childId, $rname, $sort++, $rtype, $freq, $targetMin]);
+// Seed familjegemensamma krav bara om familjen inte redan har några
+$stmt = $db->prepare('SELECT COUNT(*) FROM requirements WHERE user_id = ?');
+$stmt->execute([$user['id']]);
+if ((int)$stmt->fetchColumn() === 0) {
+    $defaults = [
+        ['Städa rummet', 'checkbox', 'weekly', null],
+        ['Läsa böcker',  'minutes',  'weekly', 120],
+    ];
+    $sort = 0;
+    foreach ($defaults as [$rname, $rtype, $freq, $targetMin]) {
+        $db->prepare('INSERT INTO requirements (user_id, name, sort_order, type, frequency, weekly_target_minutes) VALUES (?, ?, ?, ?, ?, ?)')
+           ->execute([$user['id'], $rname, $sort++, $rtype, $freq, $targetMin]);
+    }
 }
 
-// Seed default deduction types
-$defDeductions = [
-    ['Ej dukat av tallriken', -1],
-    ['Skärmtid över gränsen', -10],
-    ['Bonus: Läxa klar tidigt', 10],
-];
-foreach ($defDeductions as [$rname, $amt]) {
-    $db->prepare('INSERT INTO deduction_types (child_id, name, amount) VALUES (?, ?, ?)')->execute([$childId, $rname, $amt]);
+// Seed avdragstyper bara om familjen inte redan har några
+$stmt = $db->prepare('SELECT COUNT(*) FROM deduction_types WHERE user_id = ?');
+$stmt->execute([$user['id']]);
+if ((int)$stmt->fetchColumn() === 0) {
+
+    $defDeductions = [
+        ['Ej dukat av tallriken', -1],
+        ['Skärmtid över gränsen', -10],
+        ['Bonus: Läxa klar tidigt', 10],
+    ];
+    foreach ($defDeductions as [$rname, $amt]) {
+        $db->prepare('INSERT INTO deduction_types (user_id, name, amount) VALUES (?, ?, ?)')->execute([$user['id'], $rname, $amt]);
+    }
 }
 
 $_SESSION['flash_success'] = "$name är nu upplagd! Standardkrav och avdrag har lagts till.";
