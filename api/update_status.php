@@ -15,10 +15,10 @@ if (!$summaryId || !in_array($status, ['pending','paid','owed'])) {
 
 $stmt = db()->prepare('
     SELECT ws.id FROM weekly_summaries ws
-    JOIN children c ON c.id = ws.child_id
-    WHERE ws.id = ? AND c.user_id = ?
+    JOIN family_members fm ON fm.child_id = ws.child_id AND fm.user_id = ?
+    WHERE ws.id = ?
 ');
-$stmt->execute([$summaryId, $user['id']]);
+$stmt->execute([$user['id'], $summaryId]);
 if (!$stmt->fetch()) jsonOut(['error' => 'Ej behörig'], 403);
 
 db()->prepare('UPDATE weekly_summaries SET status = ? WHERE id = ?')->execute([$status, $summaryId]);
