@@ -51,6 +51,11 @@ unset($_SESSION['auth_error']);
           <input type="password" name="password" required autocomplete="current-password"
                  class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
         </div>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="remember_me" value="1"
+                 class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+          <span class="text-sm text-gray-600">Kom ihåg mig i 30 dagar</span>
+        </label>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 rounded-xl text-base transition-colors">
           Logga in
         </button>

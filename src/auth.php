@@ -7,8 +7,36 @@ function startSession(): void {
     }
 }
 
+function tryRememberLogin(): void {
+    $token = $_COOKIE['remember_token'] ?? '';
+    if (!$token) return;
+    $hash = hash('sha256', $token);
+    $stmt = db()->prepare('
+        SELECT u.id, u.name FROM remember_tokens rt
+        JOIN users u ON u.id = rt.user_id
+        WHERE rt.token_hash = ? AND rt.expires_at > NOW()
+    ');
+    $stmt->execute([$hash]);
+    $user = $stmt->fetch();
+    if (!$user) {
+        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+        return;
+    }
+    session_regenerate_id(true);
+    $_SESSION['user_id']   = $user['id'];
+    $_SESSION['user_name'] = $user['name'];
+    // Extend token expiry another 30 days
+    db()->prepare('UPDATE remember_tokens SET expires_at = NOW() + INTERVAL \'30 days\' WHERE token_hash = ?')
+        ->execute([$hash]);
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie('remember_token', $token, time() + 30 * 86400, '/', '', $secure, true);
+}
+
 function requireAuth(): array {
     startSession();
+    if (empty($_SESSION['user_id'])) {
+        tryRememberLogin();
+    }
     if (empty($_SESSION['user_id'])) {
         if (!empty($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] !== '/index.php') {
             $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];

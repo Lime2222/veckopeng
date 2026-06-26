@@ -116,6 +116,16 @@ INSERT INTO family_members (child_id, user_id, role)
 SELECT id, user_id, 'owner' FROM children
 ON CONFLICT (child_id, user_id) DO NOTHING;
 
+CREATE TABLE IF NOT EXISTS remember_tokens (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_remember_tokens_hash ON remember_tokens(token_hash);
+
 CREATE TABLE IF NOT EXISTS child_requirement_exclusions (
     child_id       INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     requirement_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,

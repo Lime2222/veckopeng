@@ -31,6 +31,15 @@ session_regenerate_id(true);
 $_SESSION['user_id']   = $user['id'];
 $_SESSION['user_name'] = $user['name'];
 
+if (!empty($_POST['remember_me'])) {
+    $token  = bin2hex(random_bytes(32));
+    $hash   = hash('sha256', $token);
+    db()->prepare('INSERT INTO remember_tokens (user_id, token_hash, expires_at) VALUES (?, ?, NOW() + INTERVAL \'30 days\')')
+        ->execute([$user['id'], $hash]);
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie('remember_token', $token, time() + 30 * 86400, '/', '', $secure, true);
+}
+
 if (!empty($_SESSION['pending_invite'])) {
     header('Location: /accept_invite.php');
 } elseif (!empty($_SESSION['redirect_after_login'])) {
