@@ -52,6 +52,8 @@ ALTER TABLE requirements    ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES 
 ALTER TABLE deduction_types ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 UPDATE requirements    r SET user_id = c.user_id FROM children c WHERE c.id = r.child_id AND r.user_id IS NULL;
 UPDATE deduction_types d SET user_id = c.user_id FROM children c WHERE c.id = d.child_id AND d.user_id IS NULL;
+ALTER TABLE requirements    ALTER COLUMN child_id DROP NOT NULL;
+ALTER TABLE deduction_types ALTER COLUMN child_id DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS deduction_types (
     id         SERIAL PRIMARY KEY,
