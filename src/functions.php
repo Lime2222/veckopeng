@@ -43,11 +43,32 @@ function getChild(int $childId): array|false {
 }
 
 function getRequirements(int $childId, bool $activeOnly = true): array {
-    $sql = 'SELECT * FROM requirements WHERE user_id = (SELECT user_id FROM children WHERE id = ?)';
+    $sql = 'SELECT * FROM requirements
+            WHERE user_id = (SELECT user_id FROM children WHERE id = ?)
+              AND NOT EXISTS (
+                  SELECT 1 FROM child_requirement_exclusions
+                  WHERE child_id = ? AND requirement_id = requirements.id
+              )';
     if ($activeOnly) $sql .= ' AND active = true';
     $sql .= ' ORDER BY sort_order, id';
     $stmt = db()->prepare($sql);
-    $stmt->execute([$childId]);
+    $stmt->execute([$childId, $childId]);
+    return $stmt->fetchAll();
+}
+
+function getRequirementsWithExclusions(int $childId): array {
+    $stmt = db()->prepare('
+        SELECT r.*,
+               EXISTS (
+                   SELECT 1 FROM child_requirement_exclusions
+                   WHERE child_id = ? AND requirement_id = r.id
+               ) AS excluded
+        FROM requirements r
+        WHERE r.user_id = (SELECT user_id FROM children WHERE id = ?)
+          AND r.active = true
+        ORDER BY r.sort_order, r.id
+    ');
+    $stmt->execute([$childId, $childId]);
     return $stmt->fetchAll();
 }
 
@@ -91,9 +112,13 @@ function getDayLogs(int $childId, string $date): array {
               AND dl.child_id = ?
               AND dl.log_date = ?
         WHERE r.user_id = (SELECT user_id FROM children WHERE id = ?) AND r.active = true
+          AND NOT EXISTS (
+              SELECT 1 FROM child_requirement_exclusions
+              WHERE child_id = ? AND requirement_id = r.id
+          )
         ORDER BY r.sort_order, r.id
     ');
-    $stmt->execute([$childId, $ws, $we, $childId, $ws, $we, $childId, $date, $childId]);
+    $stmt->execute([$childId, $ws, $we, $childId, $ws, $we, $childId, $date, $childId, $childId]);
     return $stmt->fetchAll();
 }
 

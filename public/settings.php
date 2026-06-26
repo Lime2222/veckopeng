@@ -9,6 +9,7 @@ $id    = (int)($_GET['id'] ?? 0);
 $child = requireChildOwnership($id, $user['id']);
 
 $members       = getChildMembers($child['id']);
+$allReqs       = getRequirementsWithExclusions($child['id']);
 $pendingInvites = getPendingInvitations($child['id']);
 $isOwner       = $child['role'] === 'owner';
 
@@ -77,6 +78,39 @@ pageNav($user['name'], 0);
       <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors">Spara</button>
     </form>
   </div>
+
+  <!-- Krav för detta barn -->
+  <?php if (!empty($allReqs)): ?>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">Krav för <?= htmlspecialchars($child['name']) ?></h2>
+      <p class="text-xs text-gray-400 mt-0.5">Välj vilka familjegemensamma krav som gäller för just detta barn</p>
+    </div>
+    <div class="divide-y divide-gray-50">
+      <?php foreach ($allReqs as $req): $excluded = (bool)$req['excluded']; ?>
+      <div class="flex items-center gap-3 px-5 py-3.5">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium <?= $excluded ? 'text-gray-400 line-through' : 'text-gray-800' ?>"><?= htmlspecialchars($req['name']) ?></p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            <?= $req['type'] === 'minutes' ? $req['weekly_target_minutes'] . ' min/vecka' : ($req['frequency'] === 'weekly' ? 'Veckovis' : 'Daglig') ?>
+          </p>
+        </div>
+        <form action="/api/toggle_child_requirement.php" method="POST">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="child_id" value="<?= $id ?>">
+          <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
+          <button type="submit" class="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors <?= $excluded ? 'bg-gray-100 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600' : 'bg-green-50 text-green-700 hover:bg-red-50 hover:text-red-600' ?>">
+            <?= $excluded ? 'Undantagen' : 'Aktiv' ?>
+          </button>
+        </form>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <div class="px-5 py-3 border-t border-gray-50">
+      <a href="/family.php" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Hantera vilka krav som finns → Familjeinställningar</a>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- Föräldrar med tillgång -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
