@@ -22,10 +22,13 @@ $childId = (int)$stmt->fetchColumn();
 $db->prepare('INSERT INTO family_members (child_id, user_id, role) VALUES (?, ?, \'owner\')')->execute([$childId, $user['id']]);
 
 // Seed default requirements
-$defaults = ['Städa rummet', 'Läsa minst 20 min'];
+$defaults = [
+    ['Städa rummet',    'weekly'],
+    ['Läsa minst 20 min', 'daily'],
+];
 $sort = 0;
-foreach ($defaults as $r) {
-    $db->prepare('INSERT INTO requirements (child_id, name, sort_order) VALUES (?, ?, ?)')->execute([$childId, $r, $sort++]);
+foreach ($defaults as [$rname, $freq]) {
+    $db->prepare('INSERT INTO requirements (child_id, name, sort_order, frequency) VALUES (?, ?, ?, ?)')->execute([$childId, $rname, $sort++, $freq]);
 }
 
 // Seed default deduction types
