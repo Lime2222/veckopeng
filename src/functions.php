@@ -118,17 +118,27 @@ function getWeekTotals(int $childId, string $weekStart): array {
     $stmt->execute([$childId]);
     $base = (float)$stmt->fetchColumn();
 
+    // Dagliga krav: räkna varje dag, veckovisa: räkna max 1 per krav
     $stmt = db()->prepare('
-        SELECT COUNT(*) FROM daily_logs
-        WHERE child_id = ? AND log_date BETWEEN ? AND ? AND completed = true
+        SELECT
+            (SELECT COUNT(*) FROM daily_logs dl
+             JOIN requirements r ON r.id = dl.requirement_id
+             WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
+               AND dl.completed = true AND r.frequency = \'daily\')
+            +
+            (SELECT COUNT(DISTINCT dl.requirement_id) FROM daily_logs dl
+             JOIN requirements r ON r.id = dl.requirement_id
+             WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
+               AND dl.completed = true AND r.frequency = \'weekly\')
     ');
-    $stmt->execute([$childId, $weekStart, $weekEnd]);
+    $stmt->execute([$childId, $weekStart, $weekEnd, $childId, $weekStart, $weekEnd]);
     $completed = (int)$stmt->fetchColumn();
 
+    // Veckovisa krav räknas som 1, dagliga som 7
     $stmt = db()->prepare('
-        SELECT COUNT(r.id) * 7
-        FROM requirements r
-        WHERE r.child_id = ? AND r.active = true
+        SELECT COALESCE(SUM(CASE WHEN frequency = \'weekly\' THEN 1 ELSE 7 END), 0)
+        FROM requirements
+        WHERE child_id = ? AND active = true
     ');
     $stmt->execute([$childId]);
     $total = (int)$stmt->fetchColumn();

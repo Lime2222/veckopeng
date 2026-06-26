@@ -17,13 +17,24 @@ $weekEnd = (new DateTime($weekStart))->modify('+6 days')->format('Y-m-d');
 $totals  = getWeekTotals($childId, $weekStart);
 
 $stmt = db()->prepare('
-    SELECT COUNT(*) FROM daily_logs
-    WHERE child_id = ? AND log_date BETWEEN ? AND ? AND completed = true
+    SELECT
+        (SELECT COUNT(*) FROM daily_logs dl
+         JOIN requirements r ON r.id = dl.requirement_id
+         WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
+           AND dl.completed = true AND r.frequency = \'daily\')
+        +
+        (SELECT COUNT(DISTINCT dl.requirement_id) FROM daily_logs dl
+         JOIN requirements r ON r.id = dl.requirement_id
+         WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
+           AND dl.completed = true AND r.frequency = \'weekly\')
 ');
-$stmt->execute([$childId, $weekStart, $weekEnd]);
+$stmt->execute([$childId, $weekStart, $weekEnd, $childId, $weekStart, $weekEnd]);
 $reqDone = (int)$stmt->fetchColumn();
 
-$stmt = db()->prepare('SELECT COUNT(*) * 7 FROM requirements WHERE child_id = ? AND active = true');
+$stmt = db()->prepare('
+    SELECT COALESCE(SUM(CASE WHEN frequency = \'weekly\' THEN 1 ELSE 7 END), 0)
+    FROM requirements WHERE child_id = ? AND active = true
+');
 $stmt->execute([$childId]);
 $reqTotal = (int)$stmt->fetchColumn();
 
