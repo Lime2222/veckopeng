@@ -124,7 +124,12 @@ pageNav($user['name'], $child['id']);
             <svg class="w-4 h-4 text-white <?= $log['completed'] ? '' : 'opacity-0' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
           </div>
         </div>
-        <span class="flex-1 text-gray-800 font-medium req-label <?= $log['completed'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($log['name']) ?></span>
+        <div class="flex-1 min-w-0">
+          <span class="text-gray-800 font-medium req-label <?= $log['completed'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($log['name']) ?></span>
+          <?php if ($log['frequency'] === 'weekly'): ?>
+          <span class="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-600">Vecka</span>
+          <?php endif; ?>
+        </div>
       </label>
       <?php endforeach; ?>
     </div>

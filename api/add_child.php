@@ -28,7 +28,7 @@ foreach ($defaults as $r) {
 
 // Seed default deduction types
 $defDeductions = [
-    ['Ej dukat av tallriken', -5],
+    ['Ej dukat av tallriken', -1],
     ['Skärmtid över gränsen', -10],
     ['Bonus: Läxa klar tidigt', 10],
 ];

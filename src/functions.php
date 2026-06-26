@@ -32,9 +32,23 @@ function getDeductionTypes(int $childId, bool $activeOnly = true): array {
 }
 
 function getDayLogs(int $childId, string $date): array {
+    $ws = weekStart($date);
+    $we = (new DateTime($ws))->modify('+6 days')->format('Y-m-d');
+
     $stmt = db()->prepare('
-        SELECT r.id, r.name,
-               COALESCE(dl.completed, false) AS completed
+        SELECT r.id, r.name, r.frequency,
+               CASE
+                   WHEN r.frequency = \'weekly\' THEN
+                       EXISTS (
+                           SELECT 1 FROM daily_logs dl2
+                           WHERE dl2.requirement_id = r.id
+                             AND dl2.child_id = ?
+                             AND dl2.log_date BETWEEN ? AND ?
+                             AND dl2.completed = true
+                       )
+                   ELSE
+                       COALESCE(dl.completed, false)
+               END AS completed
         FROM requirements r
         LEFT JOIN daily_logs dl
                ON dl.requirement_id = r.id
@@ -43,7 +57,7 @@ function getDayLogs(int $childId, string $date): array {
         WHERE r.child_id = ? AND r.active = true
         ORDER BY r.sort_order, r.id
     ');
-    $stmt->execute([$childId, $date, $childId]);
+    $stmt->execute([$childId, $ws, $we, $childId, $date, $childId]);
     return $stmt->fetchAll();
 }
 

@@ -79,8 +79,22 @@ pageNav($user['name'], 0);
     </div>
     <div class="divide-y divide-gray-50">
       <?php foreach ($requirements as $req): ?>
-      <div class="flex items-center gap-3 px-5 py-3.5">
+      <div class="flex items-center gap-2 px-5 py-3.5">
         <span class="flex-1 text-gray-800 text-sm <?= !$req['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($req['name']) ?></span>
+
+        <!-- Frekvens: daglig / veckovis -->
+        <form action="/api/set_requirement_frequency.php" method="POST" class="inline">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
+          <input type="hidden" name="child_id" value="<?= $id ?>">
+          <input type="hidden" name="frequency" value="<?= $req['frequency'] === 'weekly' ? 'daily' : 'weekly' ?>">
+          <button type="submit" title="<?= $req['frequency'] === 'weekly' ? 'Veckovis – klicka för daglig' : 'Daglig – klicka för veckovis' ?>"
+                  class="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors <?= $req['frequency'] === 'weekly' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
+            <?= $req['frequency'] === 'weekly' ? '📅 Vecka' : '📆 Daglig' ?>
+          </button>
+        </form>
+
+        <!-- Aktiv / Inaktiv -->
         <form action="/api/toggle_requirement.php" method="POST" class="inline">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
           <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
