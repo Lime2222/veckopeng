@@ -6,7 +6,16 @@ require_once dirname(__DIR__) . '/src/layout.php';
 
 $user     = requireAuth();
 $children = getChildren($user['id']);
-$ws       = weekStart();
+
+// Child accounts go straight to their child page
+foreach ($children as $c) {
+    if ($c['role'] === 'child') {
+        header('Location: /child.php?id=' . $c['id']);
+        exit;
+    }
+}
+
+$ws = weekStart();
 
 $error   = $_SESSION['flash_error']   ?? ''; unset($_SESSION['flash_error']);
 $success = $_SESSION['flash_success'] ?? ''; unset($_SESSION['flash_success']);

@@ -8,8 +8,13 @@ $user  = requireAuth();
 $id    = (int)($_GET['id'] ?? 0);
 $child = requireChildOwnership($id, $user['id']);
 
-$members       = getChildMembers($child['id']);
-$allReqs       = getRequirementsWithExclusions($child['id']);
+$members            = getChildMembers($child['id']);
+$allReqs            = getRequirementsWithExclusions($child['id']);
+$childAccountMember = null;
+foreach ($members as $m) {
+    if ($m['role'] === 'child') { $childAccountMember = $m; break; }
+}
+$childInviteToken = $_SESSION['flash_child_invite_token'] ?? ''; unset($_SESSION['flash_child_invite_token']);
 $pendingInvites = getPendingInvitations($child['id']);
 $isOwner       = $child['role'] === 'owner';
 
@@ -77,6 +82,81 @@ pageNav($user['name'], 0);
       </div>
       <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors">Spara</button>
     </form>
+  </div>
+
+  <!-- Barnkonto -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">Barnkonto</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Låt <?= htmlspecialchars($child['name']) ?> logga in och se sina krav</p>
+    </div>
+
+    <!-- Self-report toggle -->
+    <div class="px-5 py-4 border-b border-gray-50">
+      <form action="/api/toggle_child_self_report.php" method="POST" class="flex items-center justify-between gap-4">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <input type="hidden" name="child_id" value="<?= $id ?>">
+        <div>
+          <p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($child['name']) ?> kan fylla i krav själv</p>
+          <p class="text-xs text-gray-400 mt-0.5">Annars kan barnet se men inte ändra något</p>
+        </div>
+        <button type="submit"
+                class="flex-shrink-0 text-sm px-4 py-2 rounded-xl font-semibold transition-colors <?= $child['child_can_self_report'] ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
+          <?= $child['child_can_self_report'] ? 'Ja' : 'Nej' ?>
+        </button>
+      </form>
+    </div>
+
+    <!-- Linked child account -->
+    <?php if ($childAccountMember): ?>
+    <div class="px-5 py-4 border-b border-gray-50 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
+        <?= mb_substr($childAccountMember['name'], 0, 1) ?>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($childAccountMember['name']) ?></p>
+        <p class="text-xs text-gray-400">Barnkonto länkat</p>
+      </div>
+      <?php if ($isOwner): ?>
+      <form action="/api/remove_parent.php" method="POST"
+            onsubmit="return confirm('Ta bort barnkontot?')">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <input type="hidden" name="child_id" value="<?= $id ?>">
+        <input type="hidden" name="user_id" value="<?= $childAccountMember['id'] ?>">
+        <button type="submit" class="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Ta bort</button>
+      </form>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($childInviteToken): ?>
+    <div class="mx-5 mb-4 mt-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+      <p class="text-sm font-semibold text-green-800 mb-2">✅ Inbjudningslänk skapad! Dela med <?= htmlspecialchars($child['name']) ?>:</p>
+      <div class="flex gap-2">
+        <input type="text" readonly
+               value="<?= htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/accept_invite.php?token=' . $childInviteToken) ?>"
+               class="flex-1 px-3 py-2 bg-white border border-green-300 rounded-lg text-xs font-mono text-gray-700 min-w-0"
+               onclick="this.select()">
+        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>{this.textContent='✓ Kopierad!';setTimeout(()=>this.textContent='Kopiera',2000)})"
+                class="flex-shrink-0 px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors">
+          Kopiera
+        </button>
+      </div>
+      <p class="text-xs text-green-600 mt-2">Barnet skapar ett eget konto och får tillgång. Giltig i 7 dagar.</p>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!$childAccountMember && $isOwner): ?>
+    <form action="/api/invite_child.php" method="POST" class="px-5 py-4">
+      <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+      <input type="hidden" name="child_id" value="<?= $id ?>">
+      <button type="submit"
+              class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-pink-200 text-pink-600 font-semibold hover:bg-pink-50 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Skapa inbjudningslänk till <?= htmlspecialchars($child['name']) ?>
+      </button>
+    </form>
+    <?php endif; ?>
   </div>
 
   <!-- Krav för detta barn -->

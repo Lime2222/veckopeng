@@ -13,7 +13,10 @@ $date      = $body['date'] ?? '';
 $completed = (bool)($body['completed'] ?? false);
 
 if (!$childId || !$reqId || !$date) jsonOut(['error' => 'Ogiltiga parametrar'], 400);
-requireChildOwnership($childId, $user['id']);
+$childMember = requireChildOwnership($childId, $user['id']);
+if ($childMember['role'] === 'child' && !$childMember['child_can_self_report']) {
+    jsonOut(['error' => 'Du har inte rättighet att fylla i krav.'], 403);
+}
 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
 

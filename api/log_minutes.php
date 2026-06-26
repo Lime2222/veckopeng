@@ -16,7 +16,10 @@ if (!$childId || !$reqId || !$date) jsonOut(['error' => 'Ogiltiga parametrar'], 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
 if ($minutes < 0) $minutes = 0;
 
-requireChildOwnership($childId, $user['id']);
+$childMember = requireChildOwnership($childId, $user['id']);
+if ($childMember['role'] === 'child' && !$childMember['child_can_self_report']) {
+    jsonOut(['error' => 'Du har inte rättighet att fylla i krav.'], 403);
+}
 
 // Check week lock
 $lockWs = weekStart($date);

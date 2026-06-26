@@ -21,14 +21,17 @@ $deductTypes  = getDeductionTypes($child['id']);
 $dayLogs      = getDayLogs($child['id'], $selDate);
 $weekAdj      = getWeekAdjustments($child['id'], $ws);
 $summary      = getWeeklySummary($child['id'], $ws);
-$isLocked     = $summary !== false;
+$isLocked      = $summary !== false;
+$isChildUser   = $child['role'] === 'child';
+$canSelfReport = (bool)($child['child_can_self_report'] ?? false);
+$reqLocked     = $isLocked || ($isChildUser && !$canSelfReport);
 
 $prevWeek = (new DateTime($ws))->modify('-7 days')->format('Y-m-d');
 $nextWeek = (new DateTime($ws))->modify('+7 days')->format('Y-m-d');
 $isCurrentWeek = $ws === weekStart();
 
 pageHead($child['name']);
-pageNav($user['name'], $child['id']);
+pageNav($user['name'], $child['id'], $isChildUser);
 ?>
 <main class="max-w-lg mx-auto px-4 py-4" x-data="weekView()" x-init="init()">
 
@@ -136,7 +139,7 @@ pageNav($user['name'], $child['id']);
           <div class="h-2 rounded-full transition-all <?= $done ? 'bg-green-500' : 'bg-indigo-500' ?>"
                id="min-bar-<?= $log['id'] ?>" style="width:<?= $pct ?>%"></div>
         </div>
-        <?php if (!$isLocked): ?>
+        <?php if (!$reqLocked): ?>
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-gray-400 mr-1">Idag:</span>
           <?php foreach ([10, 20, 30, 60] as $m): ?>
@@ -158,7 +161,7 @@ pageNav($user['name'], $child['id']);
       </div>
 
       <?php else: ?>
-      <?php if ($isLocked): ?>
+      <?php if ($reqLocked): ?>
       <div class="flex items-center gap-4 px-4 py-4 opacity-60">
         <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 <?= $log['completed'] ? 'bg-green-500 border-green-500' : 'border-gray-300' ?>">
           <svg class="w-4 h-4 text-white <?= $log['completed'] ? '' : 'opacity-0' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
@@ -197,7 +200,7 @@ pageNav($user['name'], $child['id']);
   </div>
 
   <!-- Quick adjustments -->
-  <?php if (!$isLocked && !empty($deductTypes)): ?>
+  <?php if (!$isLocked && !$isChildUser && !empty($deductTypes)): ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
     <div class="px-4 py-3 border-b border-gray-50">
       <h2 class="font-semibold text-gray-900">Snabbknappar</h2>
@@ -235,7 +238,7 @@ pageNav($user['name'], $child['id']);
           <p class="text-sm text-gray-800 font-medium truncate"><?= htmlspecialchars($a['description']) ?></p>
           <p class="text-xs text-gray-400"><?= SHORT_DAYS[$d] ?> <?= date('j/n', strtotime($a['log_date'])) ?></p>
         </div>
-        <?php if (!$isLocked): ?>
+        <?php if (!$isLocked && !$isChildUser): ?>
         <button onclick="deleteAdjustment(<?= $a['id'] ?>, <?= $child['id'] ?>)"
                 class="p-2 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -248,6 +251,13 @@ pageNav($user['name'], $child['id']);
   <?php endif; ?>
 
   <!-- Generate summary -->
+  <?php if ($isChildUser && $isLocked): ?>
+  <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-center text-sm text-amber-800 font-medium">
+    Veckan är sammanställd av en förälder
+  </div>
+  <?php elseif ($isChildUser): ?>
+  <?php /* Children don't see the generate/summary section */ ?>
+  <?php else: ?>
   <div class="mb-4">
     <?php if (!$summary): ?>
     <button onclick="generateSummary(<?= $child['id'] ?>, '<?= $ws ?>')"
@@ -300,14 +310,24 @@ pageNav($user['name'], $child['id']);
       <?php endif; ?>
     </div>
     </div>
+    </div>
     <?php endif; ?>
   </div>
+  <?php endif; /* end !$isChildUser summary section */ ?>
 
+  <?php if (!$isChildUser): ?>
   <div class="text-center">
     <a href="/history.php?id=<?= $id ?>" class="text-sm text-indigo-600 font-medium hover:text-indigo-800">
       Visa veckohistorik →
     </a>
   </div>
+  <?php endif; ?>
+
+  <?php if ($isChildUser && !$canSelfReport): ?>
+  <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-center text-sm text-gray-500">
+    Du kan se dina krav men inte ändra dem. Prata med en förälder!
+  </div>
+  <?php endif; ?>
 </main>
 
 <script>

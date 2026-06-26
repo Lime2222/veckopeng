@@ -38,6 +38,15 @@ ALTER TABLE requirements ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'chec
 ALTER TABLE requirements ADD COLUMN IF NOT EXISTS weekly_target_minutes INTEGER;
 ALTER TABLE daily_logs   ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
+-- Child account support
+ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_report BOOLEAN DEFAULT false NOT NULL;
+ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'parent' NOT NULL;
+DO $$ BEGIN
+    ALTER TABLE family_members DROP CONSTRAINT family_members_role_check;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+ALTER TABLE family_members ADD CONSTRAINT family_members_role_check
+    CHECK (role IN ('owner', 'parent', 'child'));
+
 -- Migrate to family-level requirements (user_id replaces child_id as grouping key)
 ALTER TABLE requirements    ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE deduction_types ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;

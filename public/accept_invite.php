@@ -43,11 +43,12 @@ if (!$expired) {
     $alreadyMember = $stmt->fetch();
 
     if (!$alreadyMember) {
+        $role = $invite['role'] ?? 'parent';
         db()->prepare('
             INSERT INTO family_members (child_id, user_id, role)
-            VALUES (?, ?, \'parent\')
+            VALUES (?, ?, ?)
             ON CONFLICT (child_id, user_id) DO NOTHING
-        ')->execute([$invite['child_id'], $userId]);
+        ')->execute([$invite['child_id'], $userId, $role]);
 
         db()->prepare('UPDATE invitations SET accepted = true WHERE token = ?')->execute([$token]);
     }
