@@ -16,7 +16,9 @@ $familyUserId = (int)$child['user_id'];
 $stmt = db()->prepare('SELECT active FROM requirements WHERE id = ? AND user_id = ?');
 $stmt->execute([$reqId, $familyUserId]);
 $req = $stmt->fetch();
-if (!$req) { header("Location: /settings.php?id=$childId"); exit; }
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
+if (!$req) { header("Location: $redirect"); exit; }
 
 db()->prepare('UPDATE requirements SET active = ? WHERE id = ?')->execute([$req['active'] ? 'false' : 'true', $reqId]);
-header("Location: /settings.php?id=$childId");
+header("Location: $redirect");

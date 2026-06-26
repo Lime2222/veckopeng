@@ -14,5 +14,7 @@ $child = requireChildOwnership($childId, $user['id']);
 $familyUserId = (int)$child['user_id'];
 
 db()->prepare('DELETE FROM deduction_types WHERE id = ? AND user_id = ?')->execute([$dtId, $familyUserId]);
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
 $_SESSION['flash_success'] = 'Avdrag/bonus borttaget.';
-header("Location: /settings.php?id=$childId");
+header("Location: $redirect");

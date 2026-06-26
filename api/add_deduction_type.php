@@ -15,5 +15,7 @@ $child = requireChildOwnership($childId, $user['id']);
 $familyUserId = (int)$child['user_id'];
 
 db()->prepare('INSERT INTO deduction_types (user_id, name, amount) VALUES (?, ?, ?)')->execute([$familyUserId, $name, $amount]);
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
 $_SESSION['flash_success'] = 'Lagt till: ' . $name . ' (' . ($amount > 0 ? '+' : '') . number_format($amount, 2, ',', ' ') . ' kr).';
-header("Location: /settings.php?id=$childId");
+header("Location: $redirect");

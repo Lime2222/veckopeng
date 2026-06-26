@@ -19,4 +19,6 @@ $dt = $stmt->fetch();
 if (!$dt) { header("Location: /settings.php?id=$childId"); exit; }
 
 db()->prepare('UPDATE deduction_types SET active = ? WHERE id = ?')->execute([$dt['active'] ? 'false' : 'true', $dtId]);
-header("Location: /settings.php?id=$childId");
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
+header("Location: $redirect");

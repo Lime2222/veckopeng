@@ -24,5 +24,7 @@ $max = (int)$stmt->fetchColumn();
 $freq = $type === 'minutes' ? 'weekly' : 'daily';
 db()->prepare('INSERT INTO requirements (user_id, name, sort_order, type, frequency, weekly_target_minutes) VALUES (?, ?, ?, ?, ?, ?)')
     ->execute([$familyUserId, $name, $max + 1, $type, $freq, $type === 'minutes' ? $targetMin : null]);
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
 $_SESSION['flash_success'] = 'Krav ' . $name . ' tillagt.';
-header("Location: /settings.php?id=$childId");
+header("Location: $redirect");

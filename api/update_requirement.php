@@ -15,5 +15,7 @@ $child = requireChildOwnership($childId, $user['id']);
 $familyUserId = (int)$child['user_id'];
 
 db()->prepare('UPDATE requirements SET name = ? WHERE id = ? AND user_id = ?')->execute([$name, $reqId, $familyUserId]);
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
 $_SESSION['flash_success'] = 'Krav uppdaterat.';
-header("Location: /settings.php?id=$childId");
+header("Location: $redirect");

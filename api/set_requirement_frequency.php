@@ -18,4 +18,6 @@ $familyUserId = (int)$child['user_id'];
 db()->prepare('UPDATE requirements SET frequency = ? WHERE id = ? AND user_id = ?')
     ->execute([$frequency, $reqId, $familyUserId]);
 
-header("Location: /settings.php?id=$childId");
+$allowed = ['/family.php'];
+$redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
+header("Location: $redirect");
