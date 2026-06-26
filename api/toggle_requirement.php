@@ -4,7 +4,7 @@ require_once dirname(__DIR__) . '/src/auth.php';
 
 $user = requireAuth();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /dashboard.php'); exit; }
-verifyCsrf();
+if (!verifyCsrf()) { $_SESSION['flash_error'] = 'Sessionsfel.'; header('Location: /dashboard.php'); exit; }
 
 $childId = (int)($_POST['child_id'] ?? 0);
 $reqId   = (int)($_POST['requirement_id'] ?? 0);

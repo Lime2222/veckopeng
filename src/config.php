@@ -24,12 +24,9 @@ function csrf(): string {
     return $_SESSION['csrf'];
 }
 
-function verifyCsrf(): void {
+function verifyCsrf(): bool {
     $token = $_POST['csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    if (!hash_equals(csrf(), $token)) {
-        http_response_code(403);
-        die(json_encode(['error' => 'CSRF mismatch']));
-    }
+    return hash_equals(csrf(), $token);
 }
 
 function weekStart(?string $date = null): string {

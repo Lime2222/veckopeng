@@ -3,7 +3,7 @@ require_once dirname(__DIR__) . '/src/config.php';
 require_once dirname(__DIR__) . '/src/auth.php';
 
 $user = requireApiAuth();
-verifyCsrf();
+if (!verifyCsrf()) jsonOut(['error' => 'CSRF-fel'], 403);
 
 $body      = json_decode(file_get_contents('php://input'), true);
 $summaryId = (int)($body['summary_id'] ?? 0);

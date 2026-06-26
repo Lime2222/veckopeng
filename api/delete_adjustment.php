@@ -4,7 +4,7 @@ require_once dirname(__DIR__) . '/src/auth.php';
 require_once dirname(__DIR__) . '/src/functions.php';
 
 $user = requireApiAuth();
-verifyCsrf();
+if (!verifyCsrf()) jsonOut(['error' => 'CSRF-fel'], 403);
 
 $body  = json_decode(file_get_contents('php://input'), true);
 $adjId = (int)($body['adjustment_id'] ?? 0);

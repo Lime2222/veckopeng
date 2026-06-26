@@ -4,7 +4,7 @@ require_once dirname(__DIR__) . '/src/auth.php';
 
 $user = requireAuth();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /dashboard.php'); exit; }
-verifyCsrf();
+if (!verifyCsrf()) { $_SESSION['flash_error'] = 'Sessionsfel. Försök igen.'; header('Location: /dashboard.php'); exit; }
 
 $name         = trim($_POST['name'] ?? '');
 $weeklyAmount = (float)($_POST['weekly_amount'] ?? 50);
