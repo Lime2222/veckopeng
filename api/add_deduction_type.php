@@ -14,5 +14,5 @@ if (!$childId || !$name || $amount == 0) { $_SESSION['flash_error'] = 'Fyll i al
 requireChildOwnership($childId, $user['id']);
 
 db()->prepare('INSERT INTO deduction_types (child_id, name, amount) VALUES (?, ?, ?)')->execute([$childId, $name, $amount]);
-$_SESSION['flash_success'] = "Lagt till: "$name" (" . ($amount > 0 ? '+' : '') . number_format($amount, 2, ',', ' ') . ' kr).';
+$_SESSION['flash_success'] = 'Lagt till: ' . $name . ' (' . ($amount > 0 ? '+' : '') . number_format($amount, 2, ',', ' ') . ' kr).';
 header("Location: /settings.php?id=$childId");
