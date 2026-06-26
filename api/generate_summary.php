@@ -33,9 +33,15 @@ $reqDone = (int)$stmt->fetchColumn();
 
 $stmt = db()->prepare('
     SELECT COALESCE(SUM(CASE WHEN frequency = \'weekly\' THEN 1 ELSE 7 END), 0)
-    FROM requirements WHERE child_id = ? AND active = true
+    FROM requirements
+    WHERE user_id = (SELECT user_id FROM children WHERE id = ?)
+      AND active = true
+      AND NOT EXISTS (
+          SELECT 1 FROM child_requirement_exclusions
+          WHERE child_id = ? AND requirement_id = requirements.id
+      )
 ');
-$stmt->execute([$childId]);
+$stmt->execute([$childId, $childId]);
 $reqTotal = (int)$stmt->fetchColumn();
 
 $db   = db();

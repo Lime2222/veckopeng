@@ -19,7 +19,7 @@ requireChildOwnership($childId, $user['id']);
 
 // Check week lock
 $lockWs = weekStart($date);
-$lockCheck = db()->prepare('SELECT id FROM week_summaries WHERE child_id = ? AND week_start = ?');
+$lockCheck = db()->prepare('SELECT id FROM weekly_summaries WHERE child_id = ? AND week_start = ?');
 $lockCheck->execute([$childId, $lockWs]);
 if ($lockCheck->fetch()) jsonOut(['error' => 'Den här veckan är stängd.'], 403);
 
