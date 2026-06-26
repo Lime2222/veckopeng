@@ -146,14 +146,14 @@ pageNav($user['name'], 0);
     </div>
     <?php endif; ?>
 
-    <?php if (!$childAccountMember && $isOwner): ?>
+    <?php if ($isOwner): ?>
     <form action="/api/invite_child.php" method="POST" class="px-5 py-4">
       <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
       <input type="hidden" name="child_id" value="<?= $id ?>">
       <button type="submit"
               class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-pink-200 text-pink-600 font-semibold hover:bg-pink-50 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Skapa inbjudningslänk till <?= htmlspecialchars($child['name']) ?>
+        <?= $childAccountMember ? 'Skapa ny inbjudningslänk' : 'Skapa inbjudningslänk till ' . htmlspecialchars($child['name']) ?>
       </button>
     </form>
     <?php endif; ?>
