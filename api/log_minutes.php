@@ -18,7 +18,13 @@ if ($minutes < 0) $minutes = 0;
 
 requireChildOwnership($childId, $user['id']);
 
-$stmt = db()->prepare('SELECT type, weekly_target_minutes FROM requirements WHERE id = ? AND child_id = ?');
+// Check week lock
+$lockWs = weekStart($date);
+$lockCheck = db()->prepare('SELECT id FROM week_summaries WHERE child_id = ? AND week_start = ?');
+$lockCheck->execute([$childId, $lockWs]);
+if ($lockCheck->fetch()) jsonOut(['error' => 'Den här veckan är stängd.'], 403);
+
+$stmt = db()->prepare('SELECT type, weekly_target_minutes FROM requirements WHERE id = ? AND user_id = (SELECT user_id FROM children WHERE id = ?)');
 $stmt->execute([$reqId, $childId]);
 $req = $stmt->fetch();
 if (!$req || $req['type'] !== 'minutes') jsonOut(['error' => 'Inte ett minutkrav'], 400);

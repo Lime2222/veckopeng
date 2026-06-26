@@ -18,6 +18,12 @@ $stmt->execute([$adjId, $childId]);
 $adj = $stmt->fetch();
 if (!$adj) jsonOut(['error' => 'Hittades inte'], 404);
 
+// Check week lock
+$lockWs = weekStart($adj['log_date']);
+$lockCheck = db()->prepare('SELECT id FROM week_summaries WHERE child_id = ? AND week_start = ?');
+$lockCheck->execute([$childId, $lockWs]);
+if ($lockCheck->fetch()) jsonOut(['error' => 'Den här veckan är stängd.'], 403);
+
 db()->prepare('DELETE FROM adjustments WHERE id = ?')->execute([$adjId]);
 
 $ws     = weekStart($adj['log_date']);

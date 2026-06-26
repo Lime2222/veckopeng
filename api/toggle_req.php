@@ -19,7 +19,13 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt d
 
 $db = db();
 
-$freq = $db->prepare('SELECT frequency FROM requirements WHERE id = ? AND child_id = ?');
+// Check week lock
+$lockWs = weekStart($date);
+$lockCheck = $db->prepare('SELECT id FROM week_summaries WHERE child_id = ? AND week_start = ?');
+$lockCheck->execute([$childId, $lockWs]);
+if ($lockCheck->fetch()) jsonOut(['error' => 'Den här veckan är stängd.'], 403);
+
+$freq = $db->prepare('SELECT frequency FROM requirements WHERE id = ? AND user_id = (SELECT user_id FROM children WHERE id = ?)');
 $freq->execute([$reqId, $childId]);
 $requirement = $freq->fetch();
 $isWeekly = $requirement && $requirement['frequency'] === 'weekly';

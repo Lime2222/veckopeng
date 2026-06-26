@@ -17,8 +17,14 @@ if (!$childId || !$amount || !$desc) jsonOut(['error' => 'Ogiltiga parametrar'],
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
 requireChildOwnership($childId, $user['id']);
 
+// Check week lock
+$lockWs = weekStart($date);
+$lockCheck = db()->prepare('SELECT id FROM week_summaries WHERE child_id = ? AND week_start = ?');
+$lockCheck->execute([$childId, $lockWs]);
+if ($lockCheck->fetch()) jsonOut(['error' => 'Den här veckan är stängd.'], 403);
+
 if ($typeId) {
-    $stmt = db()->prepare('SELECT id FROM deduction_types WHERE id = ? AND child_id = ?');
+    $stmt = db()->prepare('SELECT id FROM deduction_types WHERE id = ? AND user_id = (SELECT user_id FROM children WHERE id = ?)');
     $stmt->execute([$typeId, $childId]);
     if (!$stmt->fetch()) jsonOut(['error' => 'Ogiltig typ'], 400);
 }
