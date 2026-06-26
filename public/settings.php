@@ -8,11 +8,15 @@ $user  = requireAuth();
 $id    = (int)($_GET['id'] ?? 0);
 $child = requireChildOwnership($id, $user['id']);
 
-$requirements = getRequirements($child['id'], false);
-$deductTypes  = getDeductionTypes($child['id'], false);
+$requirements  = getRequirements($child['id'], false);
+$deductTypes   = getDeductionTypes($child['id'], false);
+$members       = getChildMembers($child['id']);
+$pendingInvites = getPendingInvitations($child['id']);
+$isOwner       = $child['role'] === 'owner';
 
-$error   = $_SESSION['flash_error']   ?? ''; unset($_SESSION['flash_error']);
-$success = $_SESSION['flash_success'] ?? ''; unset($_SESSION['flash_success']);
+$error       = $_SESSION['flash_error']        ?? ''; unset($_SESSION['flash_error']);
+$success     = $_SESSION['flash_success']      ?? ''; unset($_SESSION['flash_success']);
+$inviteToken = $_SESSION['flash_invite_token'] ?? ''; unset($_SESSION['flash_invite_token']);
 
 pageHead('Inställningar – ' . $child['name']);
 pageNav($user['name'], 0);
@@ -152,6 +156,83 @@ pageNav($user['name'], 0);
         <button type="submit" class="touch-btn px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors">+</button>
       </div>
     </form>
+  </div>
+
+  <!-- Föräldrar med tillgång -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">Föräldrar med tillgång</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Alla dessa ser och kan redigera <?= htmlspecialchars($child['name']) ?>s veckopeng</p>
+    </div>
+
+    <div class="divide-y divide-gray-50">
+      <?php foreach ($members as $m): ?>
+      <div class="flex items-center gap-3 px-5 py-3.5">
+        <div class="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm flex-shrink-0">
+          <?= mb_substr($m['name'], 0, 1) ?>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($m['name']) ?></p>
+          <p class="text-xs text-gray-400"><?= htmlspecialchars($m['email']) ?></p>
+        </div>
+        <?php if ($m['role'] === 'owner'): ?>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Ägare</span>
+        <?php elseif ($isOwner): ?>
+          <form action="/api/remove_parent.php" method="POST"
+                onsubmit="return confirm('Ta bort <?= addslashes(htmlspecialchars($m['name'])) ?>s tillgång?')">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="child_id" value="<?= $id ?>">
+            <input type="hidden" name="user_id" value="<?= $m['id'] ?>">
+            <button type="submit" class="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Ta bort</button>
+          </form>
+        <?php else: ?>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-500">Förälder</span>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+    <?php if ($inviteToken): ?>
+    <div class="mx-5 mb-4 mt-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+      <p class="text-sm font-semibold text-green-800 mb-2">✅ Inbjudningslänk skapad! Dela den med den andra föräldern:</p>
+      <div class="flex gap-2">
+        <input type="text" readonly
+               value="<?= htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/accept_invite.php?token=' . $inviteToken) ?>"
+               class="flex-1 px-3 py-2 bg-white border border-green-300 rounded-lg text-xs font-mono text-gray-700 min-w-0"
+               onclick="this.select()">
+        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>{this.textContent='✓ Kopierad!';setTimeout(()=>this.textContent='Kopiera',2000)})"
+                class="flex-shrink-0 px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors">
+          Kopiera
+        </button>
+      </div>
+      <p class="text-xs text-green-600 mt-2">Giltig i 7 dagar. Den andra föräldern behöver ett konto (eller skapar ett).</p>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($pendingInvites)): ?>
+    <div class="px-5 pb-3">
+      <p class="text-xs text-gray-400 font-medium mb-2">Väntande inbjudningar:</p>
+      <?php foreach ($pendingInvites as $inv): ?>
+      <div class="flex items-center justify-between text-xs text-gray-500 py-1">
+        <span>Skapad av <?= htmlspecialchars($inv['invited_by_name']) ?> · Går ut <?= date('j M', strtotime($inv['expires_at'])) ?></span>
+        <a href="/accept_invite.php?token=<?= htmlspecialchars($inv['token']) ?>"
+           class="font-mono text-indigo-500 hover:underline truncate max-w-[120px]">länk</a>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isOwner): ?>
+    <form action="/api/invite_parent.php" method="POST" class="px-5 py-4 border-t border-gray-50">
+      <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+      <input type="hidden" name="child_id" value="<?= $id ?>">
+      <button type="submit"
+              class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Generera inbjudningslänk
+      </button>
+    </form>
+    <?php endif; ?>
   </div>
 
   <!-- Danger zone -->

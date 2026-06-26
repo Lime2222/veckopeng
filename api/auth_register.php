@@ -43,4 +43,9 @@ session_regenerate_id(true);
 $_SESSION['user_id']   = $userId;
 $_SESSION['user_name'] = $name;
 $_SESSION['flash_success'] = 'Välkommen, ' . $name . '! Ditt konto är skapat.';
-header('Location: /dashboard.php');
+
+if (!empty($_SESSION['pending_invite'])) {
+    header('Location: /accept_invite.php');
+} else {
+    header('Location: /dashboard.php');
+}

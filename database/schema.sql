@@ -87,3 +87,31 @@ CREATE TABLE IF NOT EXISTS weekly_summaries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_weekly_summaries_child ON weekly_summaries(child_id, week_start DESC);
+
+-- Family sharing
+CREATE TABLE IF NOT EXISTS family_members (
+    id         SERIAL PRIMARY KEY,
+    child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role       VARCHAR(20) DEFAULT 'parent' NOT NULL CHECK (role IN ('owner', 'parent')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(child_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_child ON family_members(child_id);
+
+-- Migrate existing owners
+INSERT INTO family_members (child_id, user_id, role)
+SELECT id, user_id, 'owner' FROM children
+ON CONFLICT (child_id, user_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS invitations (
+    id         SERIAL PRIMARY KEY,
+    child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    invited_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token      VARCHAR(64) UNIQUE NOT NULL,
+    accepted   BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days')
+);

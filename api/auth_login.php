@@ -30,4 +30,13 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
 session_regenerate_id(true);
 $_SESSION['user_id']   = $user['id'];
 $_SESSION['user_name'] = $user['name'];
-header('Location: /dashboard.php');
+
+if (!empty($_SESSION['pending_invite'])) {
+    header('Location: /accept_invite.php');
+} elseif (!empty($_SESSION['redirect_after_login'])) {
+    $redirect = $_SESSION['redirect_after_login'];
+    unset($_SESSION['redirect_after_login']);
+    header('Location: ' . $redirect);
+} else {
+    header('Location: /dashboard.php');
+}

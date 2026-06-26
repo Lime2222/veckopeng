@@ -2,8 +2,37 @@
 require_once __DIR__ . '/config.php';
 
 function getChildren(int $userId): array {
-    $stmt = db()->prepare('SELECT * FROM children WHERE user_id = ? ORDER BY name');
+    $stmt = db()->prepare('
+        SELECT c.*, fm.role
+        FROM children c
+        JOIN family_members fm ON fm.child_id = c.id AND fm.user_id = ?
+        ORDER BY c.name
+    ');
     $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
+function getChildMembers(int $childId): array {
+    $stmt = db()->prepare('
+        SELECT u.id, u.name, u.email, fm.role, fm.created_at
+        FROM family_members fm
+        JOIN users u ON u.id = fm.user_id
+        WHERE fm.child_id = ?
+        ORDER BY fm.role DESC, u.name
+    ');
+    $stmt->execute([$childId]);
+    return $stmt->fetchAll();
+}
+
+function getPendingInvitations(int $childId): array {
+    $stmt = db()->prepare('
+        SELECT i.*, u.name AS invited_by_name
+        FROM invitations i
+        JOIN users u ON u.id = i.invited_by
+        WHERE i.child_id = ? AND i.accepted = false AND i.expires_at > NOW()
+        ORDER BY i.created_at DESC
+    ');
+    $stmt->execute([$childId]);
     return $stmt->fetchAll();
 }
 

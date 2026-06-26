@@ -19,6 +19,8 @@ $stmt = $db->prepare('INSERT INTO children (user_id, name, avatar_color, weekly_
 $stmt->execute([$user['id'], $name, $color, $weeklyAmount]);
 $childId = (int)$stmt->fetchColumn();
 
+$db->prepare('INSERT INTO family_members (child_id, user_id, role) VALUES (?, ?, \'owner\')')->execute([$childId, $user['id']]);
+
 // Seed default requirements
 $defaults = ['Städa rummet', 'Läsa minst 20 min'];
 $sort = 0;
