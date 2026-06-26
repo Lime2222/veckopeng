@@ -47,7 +47,8 @@ function weekDates(string $ws): array {
 }
 
 function formatKr(float $amount): string {
-    return number_format($amount, 2, ',', ' ') . ' kr';
+    $decimals = fmod(abs($amount), 1) >= 0.005 ? 2 : 0;
+    return number_format($amount, $decimals, ',', ' ') . ' kr';
 }
 
 function jsonOut(array $data, int $code = 200): never {
