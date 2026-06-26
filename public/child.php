@@ -21,7 +21,7 @@ $deductTypes  = getDeductionTypes($child['id']);
 $dayLogs      = getDayLogs($child['id'], $selDate);
 $weekAdj      = getWeekAdjustments($child['id'], $ws);
 $summary      = getWeeklySummary($child['id'], $ws);
-$isLocked     = $summary !== null;
+$isLocked     = $summary !== false;
 
 $prevWeek = (new DateTime($ws))->modify('-7 days')->format('Y-m-d');
 $nextWeek = (new DateTime($ws))->modify('+7 days')->format('Y-m-d');
