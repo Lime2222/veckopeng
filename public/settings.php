@@ -137,7 +137,7 @@ pageNav($user['name'], 0);
                value="<?= htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/accept_invite.php?token=' . $childInviteToken) ?>"
                class="flex-1 px-3 py-2 bg-white border border-green-300 rounded-lg text-xs font-mono text-gray-700 min-w-0"
                onclick="this.select()">
-        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>{this.textContent='✓ Kopierad!';setTimeout(()=>this.textContent='Kopiera',2000)})"
+        <button onclick="copyInviteLink(this.previousElementSibling,this)"
                 class="flex-shrink-0 px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors">
           Kopiera
         </button>
@@ -234,7 +234,7 @@ pageNav($user['name'], 0);
                value="<?= htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/accept_invite.php?token=' . $inviteToken) ?>"
                class="flex-1 px-3 py-2 bg-white border border-green-300 rounded-lg text-xs font-mono text-gray-700 min-w-0"
                onclick="this.select()">
-        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>{this.textContent='✓ Kopierad!';setTimeout(()=>this.textContent='Kopiera',2000)})"
+        <button onclick="copyInviteLink(this.previousElementSibling,this)"
                 class="flex-shrink-0 px-3 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors">
           Kopiera
         </button>
@@ -287,4 +287,20 @@ pageNav($user['name'], 0);
     </div>
   </div>
 </main>
+<script>
+function copyInviteLink(input, btn) {
+  var text = input.value;
+  var done = function() { btn.textContent = '✓ Kopierad!'; setTimeout(function(){ btn.textContent = 'Kopiera'; }, 2000); };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(function() { fallbackCopy(input, done); });
+  } else {
+    fallbackCopy(input, done);
+  }
+}
+function fallbackCopy(input, done) {
+  input.select();
+  input.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); done(); } catch(e) {}
+}
+</script>
 <?php pageFoot(); ?>
