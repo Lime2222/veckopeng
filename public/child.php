@@ -268,8 +268,8 @@ pageNav($user['name'], $child['id']);
           <span>Krav uppfyllda</span><span><?= $summary['requirements_completed'] ?>/<?= $summary['requirements_total'] ?></span>
         </div>
       </div>
-      <div class="grid grid-cols-3 gap-2">
-        <?php foreach (['paid' => '✅ Betald', 'sent' => '📤 Skickad', 'owed' => '⚠️ Skyldig'] as $st => $label): ?>
+      <div class="grid grid-cols-2 gap-2">
+        <?php foreach (['paid' => '✅ Betald', 'owed' => '⚠️ Skyldig'] as $st => $label): ?>
         <button onclick="updateStatus(<?= $summary['id'] ?>, '<?= $st ?>')"
                 class="py-2.5 rounded-xl text-xs font-semibold transition-colors <?= $summary['status'] === $st ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' ?>">
           <?= $label ?>

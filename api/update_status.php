@@ -9,7 +9,7 @@ $body      = json_decode(file_get_contents('php://input'), true);
 $summaryId = (int)($body['summary_id'] ?? 0);
 $status    = $body['status'] ?? '';
 
-if (!$summaryId || !in_array($status, ['pending','paid','sent','owed'])) {
+if (!$summaryId || !in_array($status, ['pending','paid','owed'])) {
     jsonOut(['error' => 'Ogiltiga parametrar'], 400);
 }
 

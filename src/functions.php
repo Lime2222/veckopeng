@@ -179,8 +179,7 @@ function getWeeklyHistory(int $childId, int $limit = 12): array {
 const SWEDISH_DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const SHORT_DAYS   = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
 const STATUS_LABELS = [
-    'pending' => ['label' => 'Väntar',    'class' => 'bg-amber-100 text-amber-800'],
-    'paid'    => ['label' => 'Betald',    'class' => 'bg-green-100 text-green-800'],
-    'sent'    => ['label' => 'Skickad',   'class' => 'bg-blue-100 text-blue-800'],
-    'owed'    => ['label' => 'Skyldig',   'class' => 'bg-red-100 text-red-800'],
+    'pending' => ['label' => 'Väntar',  'class' => 'bg-amber-100 text-amber-800'],
+    'paid'    => ['label' => 'Betald',  'class' => 'bg-green-100 text-green-800'],
+    'owed'    => ['label' => 'Skyldig', 'class' => 'bg-red-100 text-red-800'],
 ];
