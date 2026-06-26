@@ -23,5 +23,5 @@ $max = (int)$stmt->fetchColumn();
 $freq = $type === 'minutes' ? 'weekly' : 'daily';
 db()->prepare('INSERT INTO requirements (child_id, name, sort_order, type, frequency, weekly_target_minutes) VALUES (?, ?, ?, ?, ?, ?)')
     ->execute([$childId, $name, $max + 1, $type, $freq, $type === 'minutes' ? $targetMin : null]);
-$_SESSION['flash_success'] = "Krav "$name" tillagt.";
+$_SESSION['flash_success'] = 'Krav ' . $name . ' tillagt.';
 header("Location: /settings.php?id=$childId");
