@@ -65,8 +65,9 @@ function getDayLogs(int $childId, string $date): array {
     $we = (new DateTime($ws))->modify('+6 days')->format('Y-m-d');
 
     $stmt = db()->prepare('
-        SELECT r.id, r.name, r.frequency,
+        SELECT r.id, r.name, r.frequency, r.type, r.weekly_target_minutes,
                CASE
+                   WHEN r.type = \'minutes\' THEN false
                    WHEN r.frequency = \'weekly\' THEN
                        EXISTS (
                            SELECT 1 FROM daily_logs dl2
@@ -75,9 +76,15 @@ function getDayLogs(int $childId, string $date): array {
                              AND dl2.log_date BETWEEN ? AND ?
                              AND dl2.completed = true
                        )
-                   ELSE
-                       COALESCE(dl.completed, false)
-               END AS completed
+                   ELSE COALESCE(dl.completed, false)
+               END AS completed,
+               COALESCE(dl.minutes, 0) AS minutes_today,
+               COALESCE((
+                   SELECT SUM(dl3.minutes) FROM daily_logs dl3
+                   WHERE dl3.requirement_id = r.id
+                     AND dl3.child_id = ?
+                     AND dl3.log_date BETWEEN ? AND ?
+               ), 0) AS minutes_week
         FROM requirements r
         LEFT JOIN daily_logs dl
                ON dl.requirement_id = r.id
@@ -86,7 +93,7 @@ function getDayLogs(int $childId, string $date): array {
         WHERE r.child_id = ? AND r.active = true
         ORDER BY r.sort_order, r.id
     ');
-    $stmt->execute([$childId, $ws, $we, $childId, $date, $childId]);
+    $stmt->execute([$childId, $ws, $we, $childId, $ws, $we, $childId, $date, $childId]);
     return $stmt->fetchAll();
 }
 
@@ -118,30 +125,30 @@ function getWeekTotals(int $childId, string $weekStart): array {
     $stmt->execute([$childId]);
     $base = (float)$stmt->fetchColumn();
 
-    // Dagliga krav: räkna varje dag, veckovisa: räkna max 1 per krav
-    $stmt = db()->prepare('
-        SELECT
-            (SELECT COUNT(*) FROM daily_logs dl
-             JOIN requirements r ON r.id = dl.requirement_id
-             WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
-               AND dl.completed = true AND r.frequency = \'daily\')
-            +
-            (SELECT COUNT(DISTINCT dl.requirement_id) FROM daily_logs dl
-             JOIN requirements r ON r.id = dl.requirement_id
-             WHERE dl.child_id = ? AND dl.log_date BETWEEN ? AND ?
-               AND dl.completed = true AND r.frequency = \'weekly\')
-    ');
-    $stmt->execute([$childId, $weekStart, $weekEnd, $childId, $weekStart, $weekEnd]);
-    $completed = (int)$stmt->fetchColumn();
-
-    // Veckovisa krav räknas som 1, dagliga som 7
-    $stmt = db()->prepare('
-        SELECT COALESCE(SUM(CASE WHEN frequency = \'weekly\' THEN 1 ELSE 7 END), 0)
-        FROM requirements
-        WHERE child_id = ? AND active = true
-    ');
-    $stmt->execute([$childId]);
-    $total = (int)$stmt->fetchColumn();
+    $reqs  = getRequirements($childId);
+    $total = 0;
+    $completed = 0;
+    foreach ($reqs as $req) {
+        if ($req['type'] === 'minutes') {
+            $total += 1;
+            $target = (int)($req['weekly_target_minutes'] ?? 0);
+            if ($target > 0) {
+                $s = db()->prepare('SELECT COALESCE(SUM(minutes),0) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ?');
+                $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
+                if ((int)$s->fetchColumn() >= $target) $completed += 1;
+            }
+        } elseif ($req['frequency'] === 'weekly') {
+            $total += 1;
+            $s = db()->prepare('SELECT COUNT(*) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ? AND completed=true');
+            $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
+            if ((int)$s->fetchColumn() > 0) $completed += 1;
+        } else {
+            $total += 7;
+            $s = db()->prepare('SELECT COUNT(*) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ? AND completed=true');
+            $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
+            $completed += (int)$s->fetchColumn();
+        }
+    }
 
     return [
         'base'         => $base,

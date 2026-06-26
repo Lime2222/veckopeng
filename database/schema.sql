@@ -33,6 +33,9 @@ CREATE INDEX IF NOT EXISTS idx_requirements_child_id ON requirements(child_id);
 
 -- Migration: weekly requirements (safe to run multiple times)
 ALTER TABLE requirements ADD COLUMN IF NOT EXISTS frequency VARCHAR(10) DEFAULT 'daily' NOT NULL;
+ALTER TABLE requirements ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'checkbox' NOT NULL;
+ALTER TABLE requirements ADD COLUMN IF NOT EXISTS weekly_target_minutes INTEGER;
+ALTER TABLE daily_logs   ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
 CREATE TABLE IF NOT EXISTS deduction_types (
     id         SERIAL PRIMARY KEY,

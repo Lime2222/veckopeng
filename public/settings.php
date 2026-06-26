@@ -84,7 +84,12 @@ pageNav($user['name'], 0);
     <div class="divide-y divide-gray-50">
       <?php foreach ($requirements as $req): ?>
       <div class="flex items-center gap-2 px-5 py-3.5">
-        <span class="flex-1 text-gray-800 text-sm <?= !$req['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($req['name']) ?></span>
+        <div class="flex-1 min-w-0">
+          <span class="text-gray-800 text-sm <?= !$req['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($req['name']) ?></span>
+          <?php if ($req['type'] === 'minutes'): ?>
+          <span class="ml-1.5 text-xs text-indigo-500 font-medium"><?= $req['weekly_target_minutes'] ?> min/v</span>
+          <?php endif; ?>
+        </div>
 
         <!-- Frekvens: daglig / veckovis -->
         <form action="/api/set_requirement_frequency.php" method="POST" class="inline">
@@ -111,12 +116,25 @@ pageNav($user['name'], 0);
       </div>
       <?php endforeach; ?>
     </div>
-    <form action="/api/add_requirement.php" method="POST" class="px-5 py-4 border-t border-gray-50 flex gap-2">
+    <form action="/api/add_requirement.php" method="POST" class="px-5 py-4 border-t border-gray-50 space-y-2"
+          x-data="{ rtype: 'checkbox' }">
       <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
       <input type="hidden" name="child_id" value="<?= $id ?>">
-      <input type="text" name="name" placeholder="Nytt krav, t.ex. Städa rum" required
-             class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-      <button type="submit" class="touch-btn px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors">+</button>
+      <div class="flex gap-2">
+        <input type="text" name="name" placeholder="Nytt krav, t.ex. Städa rum" required
+               class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <select name="type" x-model="rtype"
+                class="px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+          <option value="checkbox">Kryssruta</option>
+          <option value="minutes">Minuter/vecka</option>
+        </select>
+        <button type="submit" class="touch-btn px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors">+</button>
+      </div>
+      <div x-show="rtype === 'minutes'" x-cloak class="flex items-center gap-2">
+        <input type="number" name="weekly_target_minutes" min="1" placeholder="Veckamål i minuter, t.ex. 120"
+               class="flex-1 px-3 py-3 border border-indigo-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <span class="text-xs text-gray-400 whitespace-nowrap">min/vecka</span>
+      </div>
     </form>
   </div>
 

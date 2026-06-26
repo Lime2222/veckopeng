@@ -114,6 +114,42 @@ pageNav($user['name'], $child['id']);
     <?php else: ?>
     <div class="divide-y divide-gray-50" id="req-list">
       <?php foreach ($dayLogs as $log): ?>
+
+      <?php if ($log['type'] === 'minutes'):
+        $target  = (int)($log['weekly_target_minutes'] ?? 0);
+        $weekMin = (int)$log['minutes_week'];
+        $pct     = $target > 0 ? min(100, round(100 * $weekMin / $target)) : 0;
+        $done    = $target > 0 && $weekMin >= $target;
+      ?>
+      <div class="px-4 py-4" id="min-row-<?= $log['id'] ?>">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 <?= $done ? 'bg-green-500 border-green-500' : 'border-gray-300' ?>">
+              <svg class="w-4 h-4 text-white <?= $done ? '' : 'opacity-0' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <span class="font-medium text-gray-800"><?= htmlspecialchars($log['name']) ?></span>
+          </div>
+          <span class="text-sm font-semibold <?= $done ? 'text-green-600' : 'text-gray-500' ?>" id="min-week-<?= $log['id'] ?>"><?= $weekMin ?>/<?= $target ?> min</span>
+        </div>
+        <div class="bg-gray-100 rounded-full h-2 mb-3">
+          <div class="h-2 rounded-full transition-all <?= $done ? 'bg-green-500' : 'bg-indigo-500' ?>"
+               id="min-bar-<?= $log['id'] ?>" style="width:<?= $pct ?>%"></div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-gray-400 mr-1">Idag:</span>
+          <?php foreach ([10, 20, 30, 60] as $m): ?>
+          <button onclick="addMinutes(<?= $child['id'] ?>, <?= $log['id'] ?>, '<?= $selDate ?>', <?= $m ?>, <?= $target ?>)"
+                  class="flex-1 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100 active:scale-95 transition-all">
+            +<?= $m ?>
+          </button>
+          <?php endforeach; ?>
+          <span class="text-sm font-bold text-gray-700 px-2 min-w-[52px] text-center" id="min-today-<?= $log['id'] ?>"><?= (int)$log['minutes_today'] ?> min</span>
+          <button onclick="addMinutes(<?= $child['id'] ?>, <?= $log['id'] ?>, '<?= $selDate ?>', -10, <?= $target ?>)"
+                  class="px-3 py-2.5 rounded-xl bg-red-50 text-red-500 text-sm font-bold hover:bg-red-100 active:scale-95 transition-all">-10</button>
+        </div>
+      </div>
+
+      <?php else: ?>
       <label class="flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors req-row"
              data-req-id="<?= $log['id'] ?>"
              data-date="<?= $selDate ?>"
@@ -131,6 +167,8 @@ pageNav($user['name'], $child['id']);
           <?php endif; ?>
         </div>
       </label>
+      <?php endif; ?>
+
       <?php endforeach; ?>
     </div>
     <?php endif; ?>
@@ -312,6 +350,46 @@ async function deleteAdjustment(adjId, childId) {
   if (r.error) { alert(r.error); return; }
   document.getElementById('adj-'+adjId)?.remove();
   if (r.final_fmt) document.getElementById('final-amount').textContent = r.final_fmt;
+}
+
+async function addMinutes(childId, reqId, date, delta, target) {
+  const todayEl = document.getElementById('min-today-' + reqId);
+  const current = parseInt(todayEl.textContent) || 0;
+  const newVal  = Math.max(0, current + delta);
+
+  const r = await fetch('/api/log_minutes.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+    body: JSON.stringify({child_id: childId, requirement_id: reqId, date, minutes: newVal})
+  }).then(r => r.json()).catch(() => ({error: 'Nätverksfel'}));
+
+  if (r.error) { alert(r.error); return; }
+
+  todayEl.textContent = r.minutes_today + ' min';
+  const weekEl = document.getElementById('min-week-' + reqId);
+  weekEl.textContent = r.minutes_week + '/' + r.target + ' min';
+  weekEl.className = 'text-sm font-semibold ' + (r.completed ? 'text-green-600' : 'text-gray-500');
+
+  const bar = document.getElementById('min-bar-' + reqId);
+  const pct = target > 0 ? Math.min(100, Math.round(100 * r.minutes_week / r.target)) : 0;
+  bar.style.width = pct + '%';
+  bar.className = 'h-2 rounded-full transition-all ' + (r.completed ? 'bg-green-500' : 'bg-indigo-500');
+
+  // Update checkmark in the row
+  const row = document.getElementById('min-row-' + reqId);
+  if (row) {
+    const circle = row.querySelector('.rounded-full.border-2');
+    const check  = row.querySelector('svg');
+    if (r.completed) {
+      circle.classList.replace('border-gray-300', 'border-green-500');
+      circle.classList.add('bg-green-500');
+      check.classList.remove('opacity-0');
+    } else {
+      circle.classList.remove('bg-green-500', 'border-green-500');
+      circle.classList.add('border-gray-300');
+      check.classList.add('opacity-0');
+    }
+  }
 }
 
 async function generateSummary(childId, weekStart) {
