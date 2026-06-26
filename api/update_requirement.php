@@ -1,0 +1,18 @@
+<?php
+require_once dirname(__DIR__) . '/src/config.php';
+require_once dirname(__DIR__) . '/src/auth.php';
+
+$user = requireAuth();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /dashboard.php'); exit; }
+if (!verifyCsrf()) { $_SESSION['flash_error'] = 'Sessionsfel.'; header('Location: /dashboard.php'); exit; }
+
+$childId = (int)($_POST['child_id'] ?? 0);
+$reqId   = (int)($_POST['requirement_id'] ?? 0);
+$name    = trim($_POST['name'] ?? '');
+
+if (!$childId || !$reqId || !$name) { $_SESSION['flash_error'] = 'Ogiltiga uppgifter.'; header("Location: /settings.php?id=$childId"); exit; }
+requireChildOwnership($childId, $user['id']);
+
+db()->prepare('UPDATE requirements SET name = ? WHERE id = ? AND child_id = ?')->execute([$name, $reqId, $childId]);
+$_SESSION['flash_success'] = 'Krav uppdaterat.';
+header("Location: /settings.php?id=$childId");

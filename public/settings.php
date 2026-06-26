@@ -90,36 +90,64 @@ pageNav($user['name'], 0);
     </div>
     <div class="divide-y divide-gray-50">
       <?php foreach ($requirements as $req): ?>
-      <div class="flex items-center gap-2 px-5 py-3.5">
-        <div class="flex-1 min-w-0">
-          <span class="text-gray-800 text-sm <?= !$req['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($req['name']) ?></span>
-          <?php if ($req['type'] === 'minutes'): ?>
-          <span class="ml-1.5 text-xs text-indigo-500 font-medium"><?= $req['weekly_target_minutes'] ?> min/v</span>
-          <?php endif; ?>
+      <div x-data="{ editing: false }" class="px-5 py-3">
+
+        <!-- Visningsläge -->
+        <div x-show="!editing" class="flex items-center gap-2">
+          <div class="flex-1 min-w-0">
+            <span class="text-gray-800 text-sm <?= !$req['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($req['name']) ?></span>
+            <?php if ($req['type'] === 'minutes'): ?>
+              <span class="ml-1.5 text-xs text-indigo-500 font-medium"><?= $req['weekly_target_minutes'] ?> min/v</span>
+            <?php endif; ?>
+            <span class="ml-1.5 text-xs text-gray-400"><?= $req['frequency'] === 'weekly' ? '· Vecka' : '' ?></span>
+          </div>
+          <button @click="editing=true" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors" title="Redigera">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <form action="/api/toggle_requirement.php" method="POST" class="inline">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
+            <input type="hidden" name="child_id" value="<?= $id ?>">
+            <button type="submit" class="text-xs px-2 py-1.5 rounded-lg font-medium transition-colors <?= $req['active'] ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' ?>">
+              <?= $req['active'] ? 'Aktiv' : 'Inaktiv' ?>
+            </button>
+          </form>
+          <form action="/api/delete_requirement.php" method="POST" class="inline"
+                onsubmit="return confirm('Ta bort kravet permanent?')">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
+            <input type="hidden" name="child_id" value="<?= $id ?>">
+            <button type="submit" class="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors" title="Ta bort">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </form>
         </div>
 
-        <!-- Frekvens: daglig / veckovis -->
-        <form action="/api/set_requirement_frequency.php" method="POST" class="inline">
+        <!-- Redigeringsläge -->
+        <form x-show="editing" x-cloak action="/api/update_requirement.php" method="POST" class="space-y-2">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
           <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
           <input type="hidden" name="child_id" value="<?= $id ?>">
-          <input type="hidden" name="frequency" value="<?= $req['frequency'] === 'weekly' ? 'daily' : 'weekly' ?>">
-          <button type="submit" title="<?= $req['frequency'] === 'weekly' ? 'Veckovis – klicka för daglig' : 'Daglig – klicka för veckovis' ?>"
-                  class="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors <?= $req['frequency'] === 'weekly' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
-            <?= $req['frequency'] === 'weekly' ? '📅 Vecka' : '📆 Daglig' ?>
-          </button>
+          <div class="flex gap-2">
+            <input type="text" name="name" value="<?= htmlspecialchars($req['name']) ?>" required
+                   class="flex-1 px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">Spara</button>
+            <button type="button" @click="editing=false" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold transition-colors">Avbryt</button>
+          </div>
+          <!-- Frekvensväljare i redigeringsläge -->
+          <div class="flex gap-2">
+            <form action="/api/set_requirement_frequency.php" method="POST" class="inline">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+              <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
+              <input type="hidden" name="child_id" value="<?= $id ?>">
+              <input type="hidden" name="frequency" value="<?= $req['frequency'] === 'weekly' ? 'daily' : 'weekly' ?>">
+              <button type="submit" class="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors <?= $req['frequency'] === 'weekly' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
+                <?= $req['frequency'] === 'weekly' ? '📅 Veckovis' : '📆 Daglig' ?> – byt
+              </button>
+            </form>
+          </div>
         </form>
 
-        <!-- Aktiv / Inaktiv -->
-        <form action="/api/toggle_requirement.php" method="POST" class="inline">
-          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
-          <input type="hidden" name="requirement_id" value="<?= $req['id'] ?>">
-          <input type="hidden" name="child_id" value="<?= $id ?>">
-          <button type="submit"
-                  class="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors <?= $req['active'] ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
-            <?= $req['active'] ? 'Aktiv' : 'Inaktiv' ?>
-          </button>
-        </form>
       </div>
       <?php endforeach; ?>
     </div>
@@ -152,21 +180,52 @@ pageNav($user['name'], 0);
       <p class="text-xs text-gray-400 mt-0.5">Negativt belopp = avdrag, positivt = bonus</p>
     </div>
     <div class="divide-y divide-gray-50">
-      <?php foreach ($deductTypes as $dt): ?>
-      <div class="flex items-center gap-3 px-5 py-3.5">
-        <span class="w-16 text-right font-bold text-sm flex-shrink-0 <?= (float)$dt['amount'] >= 0 ? 'text-green-600' : 'text-red-500' ?>">
-          <?= (float)$dt['amount'] > 0 ? '+' : '' ?><?= formatKr((float)$dt['amount']) ?>
-        </span>
-        <span class="flex-1 text-gray-800 text-sm <?= !$dt['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($dt['name']) ?></span>
-        <form action="/api/toggle_deduction_type.php" method="POST" class="inline">
+      <?php foreach ($deductTypes as $dt): $amt = (float)$dt['amount']; ?>
+      <div x-data="{ editing: false }" class="px-5 py-3">
+
+        <!-- Visningsläge -->
+        <div x-show="!editing" class="flex items-center gap-2">
+          <span class="w-14 text-right font-bold text-sm flex-shrink-0 <?= $amt >= 0 ? 'text-green-600' : 'text-red-500' ?>">
+            <?= $amt > 0 ? '+' : '' ?><?= formatKr($amt) ?>
+          </span>
+          <span class="flex-1 text-gray-800 text-sm truncate <?= !$dt['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($dt['name']) ?></span>
+          <button @click="editing=true" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors" title="Redigera">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <form action="/api/toggle_deduction_type.php" method="POST" class="inline">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="deduction_type_id" value="<?= $dt['id'] ?>">
+            <input type="hidden" name="child_id" value="<?= $id ?>">
+            <button type="submit" class="text-xs px-2 py-1.5 rounded-lg font-medium transition-colors <?= $dt['active'] ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' ?>">
+              <?= $dt['active'] ? 'Aktiv' : 'Inaktiv' ?>
+            </button>
+          </form>
+          <form action="/api/delete_deduction_type.php" method="POST" class="inline"
+                onsubmit="return confirm('Ta bort permanent?')">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="deduction_type_id" value="<?= $dt['id'] ?>">
+            <input type="hidden" name="child_id" value="<?= $id ?>">
+            <button type="submit" class="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors" title="Ta bort">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Redigeringsläge -->
+        <form x-show="editing" x-cloak action="/api/update_deduction_type.php" method="POST">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
           <input type="hidden" name="deduction_type_id" value="<?= $dt['id'] ?>">
           <input type="hidden" name="child_id" value="<?= $id ?>">
-          <button type="submit"
-                  class="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors <?= $dt['active'] ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
-            <?= $dt['active'] ? 'Aktiv' : 'Inaktiv' ?>
-          </button>
+          <div class="flex gap-2">
+            <input type="number" name="amount" value="<?= $amt ?>" step="0.5" required
+                   class="w-24 px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <input type="text" name="name" value="<?= htmlspecialchars($dt['name']) ?>" required
+                   class="flex-1 px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">Spara</button>
+            <button type="button" @click="editing=false" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold transition-colors">Avbryt</button>
+          </div>
         </form>
+
       </div>
       <?php endforeach; ?>
     </div>
