@@ -1,0 +1,40 @@
+<?php
+require_once dirname(__DIR__) . '/src/config.php';
+require_once dirname(__DIR__) . '/src/auth.php';
+
+$user = requireAuth();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /dashboard.php'); exit; }
+verifyCsrf();
+
+$name         = trim($_POST['name'] ?? '');
+$weeklyAmount = (float)($_POST['weekly_amount'] ?? 50);
+$color        = $_POST['avatar_color'] ?? '#6366f1';
+
+if (!$name) { $_SESSION['flash_error'] = 'Ange ett namn.'; header('Location: /dashboard.php'); exit; }
+if (!preg_match('/^#[0-9a-f]{6}$/i', $color)) $color = '#6366f1';
+if ($weeklyAmount < 0) $weeklyAmount = 0;
+
+$db   = db();
+$stmt = $db->prepare('INSERT INTO children (user_id, name, avatar_color, weekly_amount) VALUES (?, ?, ?, ?) RETURNING id');
+$stmt->execute([$user['id'], $name, $color, $weeklyAmount]);
+$childId = (int)$stmt->fetchColumn();
+
+// Seed default requirements
+$defaults = ['Städa rummet', 'Läsa minst 20 min'];
+$sort = 0;
+foreach ($defaults as $r) {
+    $db->prepare('INSERT INTO requirements (child_id, name, sort_order) VALUES (?, ?, ?)')->execute([$childId, $r, $sort++]);
+}
+
+// Seed default deduction types
+$defDeductions = [
+    ['Ej dukat av tallriken', -5],
+    ['Skärmtid över gränsen', -10],
+    ['Bonus: Läxa klar tidigt', 10],
+];
+foreach ($defDeductions as [$rname, $amt]) {
+    $db->prepare('INSERT INTO deduction_types (child_id, name, amount) VALUES (?, ?, ?)')->execute([$childId, $rname, $amt]);
+}
+
+$_SESSION['flash_success'] = "$name är nu upplagd! Standardkrav och avdrag har lagts till.";
+header("Location: /child.php?id=$childId");

@@ -1,0 +1,21 @@
+<?php
+require_once dirname(__DIR__) . '/src/config.php';
+require_once dirname(__DIR__) . '/src/auth.php';
+
+$user = requireAuth();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /dashboard.php'); exit; }
+verifyCsrf();
+
+$childId = (int)($_POST['child_id'] ?? 0);
+$dtId    = (int)($_POST['deduction_type_id'] ?? 0);
+
+if (!$childId || !$dtId) { header("Location: /settings.php?id=$childId"); exit; }
+requireChildOwnership($childId, $user['id']);
+
+$stmt = db()->prepare('SELECT active FROM deduction_types WHERE id = ? AND child_id = ?');
+$stmt->execute([$dtId, $childId]);
+$dt = $stmt->fetch();
+if (!$dt) { header("Location: /settings.php?id=$childId"); exit; }
+
+db()->prepare('UPDATE deduction_types SET active = ? WHERE id = ?')->execute([$dt['active'] ? 'false' : 'true', $dtId]);
+header("Location: /settings.php?id=$childId");

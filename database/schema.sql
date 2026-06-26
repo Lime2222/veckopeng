@@ -1,0 +1,86 @@
+-- Veckopeng database schema
+-- PostgreSQL 14+
+
+CREATE TABLE IF NOT EXISTS users (
+    id            SERIAL PRIMARY KEY,
+    email         VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name          VARCHAR(100) NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS children (
+    id            SERIAL PRIMARY KEY,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name          VARCHAR(100) NOT NULL,
+    avatar_color  VARCHAR(7) DEFAULT '#6366f1',
+    weekly_amount NUMERIC(10,2) DEFAULT 50.00 NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_children_user_id ON children(user_id);
+
+CREATE TABLE IF NOT EXISTS requirements (
+    id         SERIAL PRIMARY KEY,
+    child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    name       VARCHAR(200) NOT NULL,
+    active     BOOLEAN DEFAULT true NOT NULL,
+    sort_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_requirements_child_id ON requirements(child_id);
+
+CREATE TABLE IF NOT EXISTS deduction_types (
+    id         SERIAL PRIMARY KEY,
+    child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    name       VARCHAR(200) NOT NULL,
+    amount     NUMERIC(10,2) NOT NULL,
+    active     BOOLEAN DEFAULT true NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_deduction_types_child_id ON deduction_types(child_id);
+
+CREATE TABLE IF NOT EXISTS daily_logs (
+    id             SERIAL PRIMARY KEY,
+    child_id       INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    requirement_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+    log_date       DATE NOT NULL,
+    completed      BOOLEAN DEFAULT false NOT NULL,
+    created_at     TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (child_id, requirement_id, log_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_logs_child_date ON daily_logs(child_id, log_date);
+
+CREATE TABLE IF NOT EXISTS adjustments (
+    id                SERIAL PRIMARY KEY,
+    child_id          INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    deduction_type_id INTEGER REFERENCES deduction_types(id) ON DELETE SET NULL,
+    amount            NUMERIC(10,2) NOT NULL,
+    description       VARCHAR(200) NOT NULL,
+    log_date          DATE NOT NULL,
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adjustments_child_date ON adjustments(child_id, log_date);
+
+CREATE TABLE IF NOT EXISTS weekly_summaries (
+    id                     SERIAL PRIMARY KEY,
+    child_id               INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    week_start             DATE NOT NULL,
+    week_end               DATE NOT NULL,
+    base_amount            NUMERIC(10,2) NOT NULL,
+    total_adjustments      NUMERIC(10,2) DEFAULT 0 NOT NULL,
+    final_amount           NUMERIC(10,2) NOT NULL,
+    requirements_completed INTEGER DEFAULT 0 NOT NULL,
+    requirements_total     INTEGER DEFAULT 0 NOT NULL,
+    status                 VARCHAR(20) DEFAULT 'pending' NOT NULL
+                               CHECK (status IN ('pending','paid','sent','owed')),
+    notes                  TEXT,
+    generated_at           TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (child_id, week_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_summaries_child ON weekly_summaries(child_id, week_start DESC);

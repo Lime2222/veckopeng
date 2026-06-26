@@ -1,0 +1,36 @@
+<?php
+require_once dirname(__DIR__) . '/src/config.php';
+require_once dirname(__DIR__) . '/src/auth.php';
+require_once dirname(__DIR__) . '/src/functions.php';
+
+$user = requireApiAuth();
+verifyCsrf();
+
+$body    = json_decode(file_get_contents('php://input'), true);
+$childId   = (int)($body['child_id'] ?? 0);
+$typeId    = isset($body['deduction_type_id']) ? (int)$body['deduction_type_id'] : null;
+$amount    = (float)($body['amount'] ?? 0);
+$desc      = trim($body['description'] ?? '');
+$date      = $body['date'] ?? date('Y-m-d');
+
+if (!$childId || !$amount || !$desc) jsonOut(['error' => 'Ogiltiga parametrar'], 400);
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
+requireChildOwnership($childId, $user['id']);
+
+if ($typeId) {
+    $stmt = db()->prepare('SELECT id FROM deduction_types WHERE id = ? AND child_id = ?');
+    $stmt->execute([$typeId, $childId]);
+    if (!$stmt->fetch()) jsonOut(['error' => 'Ogiltig typ'], 400);
+}
+
+$stmt = db()->prepare('
+    INSERT INTO adjustments (child_id, deduction_type_id, amount, description, log_date)
+    VALUES (?, ?, ?, ?, ?)
+    RETURNING id
+');
+$stmt->execute([$childId, $typeId, $amount, $desc, $date]);
+$adjId = (int)$stmt->fetchColumn();
+
+$ws     = weekStart($date);
+$totals = getWeekTotals($childId, $ws);
+jsonOut(['ok' => true, 'adjustment_id' => $adjId, 'final' => $totals['final'], 'final_fmt' => formatKr($totals['final'])]);

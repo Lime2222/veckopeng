@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: veckopeng-ingress
+  namespace: veckopeng
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"   # Remove if not using cert-manager
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - veckopeng.example.com   # Replace with your domain
+      secretName: veckopeng-tls
+  rules:
+    - host: veckopeng.example.com   # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: veckopeng-svc
+                port:
+                  number: 80
