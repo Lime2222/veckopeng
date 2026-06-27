@@ -3,10 +3,10 @@ require_once __DIR__ . '/config.php';
 
 function getChildren(int $userId): array {
     $stmt = db()->prepare('
-        SELECT c.*, fm.role
+        SELECT c.*, fm.role, fm.sort_order
         FROM children c
         JOIN family_members fm ON fm.child_id = c.id AND fm.user_id = ?
-        ORDER BY c.name
+        ORDER BY fm.sort_order ASC, c.name ASC
     ');
     $stmt->execute([$userId]);
     return $stmt->fetchAll();

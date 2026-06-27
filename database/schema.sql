@@ -40,6 +40,7 @@ ALTER TABLE daily_logs   ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
 -- Child account support
 ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_report  BOOLEAN DEFAULT false NOT NULL;
+ALTER TABLE family_members ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0 NOT NULL;
 ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_adjust BOOLEAN DEFAULT false NOT NULL;
 ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'parent' NOT NULL;
 DO $$ BEGIN
