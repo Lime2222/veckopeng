@@ -49,74 +49,44 @@ pageNav($user['name']);
   </div>
   <?php else: ?>
   <div class="space-y-3">
-    <?php foreach ($children as $i => $child):
+    <?php foreach ($children as $child):
       $totals  = getWeekTotals($child['id'], $ws);
       $summary = getWeeklySummary($child['id'], $ws);
       $color   = htmlspecialchars($child['avatar_color']);
-      $isFirst = $i === 0;
-      $isLast  = $i === count($children) - 1;
     ?>
-    <div class="flex items-stretch gap-2">
-      <!-- Barnkort -->
-      <a href="/child.php?id=<?= $child['id'] ?>"
-         class="flex-1 block bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow active:scale-[0.99]">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0"
-               style="background-color:<?= $color ?>">
-            <?= mb_substr($child['name'], 0, 1) ?>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <h2 class="font-bold text-gray-900 text-lg truncate"><?= htmlspecialchars($child['name']) ?></h2>
-              <?php if ($summary): $sl = STATUS_LABELS[$summary['status']] ?? STATUS_LABELS['pending']; ?>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full <?= $sl['class'] ?>"><?= $sl['label'] ?></span>
-              <?php endif; ?>
-            </div>
-            <div class="flex items-center gap-3 mt-1">
-              <span class="text-sm text-gray-500">Veckopeng: <strong class="text-gray-700"><?= formatKr($child['weekly_amount']) ?></strong></span>
-              <?php if ($totals['adjustments'] != 0): ?>
-              <span class="text-sm <?= $totals['adjustments'] > 0 ? 'text-green-600' : 'text-red-500' ?>">
-                <?= $totals['adjustments'] > 0 ? '+' : '' ?><?= formatKr($totals['adjustments']) ?>
-              </span>
-              <?php endif; ?>
-            </div>
-            <div class="mt-2 flex items-center gap-2">
-              <div class="flex-1 bg-gray-100 rounded-full h-1.5">
-                <?php $pct = $totals['req_total'] > 0 ? round(100 * $totals['req_done'] / $totals['req_total']) : 0; ?>
-                <div class="h-1.5 rounded-full bg-indigo-500" style="width:<?= $pct ?>%"></div>
-              </div>
-              <span class="text-xs text-gray-400"><?= $totals['req_done'] ?>/<?= $totals['req_total'] ?> krav</span>
-            </div>
-          </div>
-          <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <a href="/child.php?id=<?= $child['id'] ?>"
+       class="block bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow active:scale-[0.99]">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0"
+             style="background-color:<?= $color ?>">
+          <?= mb_substr($child['name'], 0, 1) ?>
         </div>
-      </a>
-      <?php if (count($children) > 1): ?>
-      <!-- Upp/ner-knappar -->
-      <div class="flex flex-col gap-1 justify-center">
-        <form method="POST" action="/api/reorder_child.php">
-          <input type="hidden" name="csrf"      value="<?= htmlspecialchars(csrf()) ?>">
-          <input type="hidden" name="child_id"  value="<?= $child['id'] ?>">
-          <input type="hidden" name="direction" value="up">
-          <button type="submit"
-                  <?= $isFirst ? 'disabled' : '' ?>
-                  class="w-8 h-8 flex items-center justify-center rounded-xl transition-colors <?= $isFirst ? 'text-gray-200 cursor-default' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' ?>">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
-          </button>
-        </form>
-        <form method="POST" action="/api/reorder_child.php">
-          <input type="hidden" name="csrf"      value="<?= htmlspecialchars(csrf()) ?>">
-          <input type="hidden" name="child_id"  value="<?= $child['id'] ?>">
-          <input type="hidden" name="direction" value="down">
-          <button type="submit"
-                  <?= $isLast ? 'disabled' : '' ?>
-                  class="w-8 h-8 flex items-center justify-center rounded-xl transition-colors <?= $isLast ? 'text-gray-200 cursor-default' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' ?>">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-        </form>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-900 text-lg truncate"><?= htmlspecialchars($child['name']) ?></h2>
+            <?php if ($summary): $sl = STATUS_LABELS[$summary['status']] ?? STATUS_LABELS['pending']; ?>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full <?= $sl['class'] ?>"><?= $sl['label'] ?></span>
+            <?php endif; ?>
+          </div>
+          <div class="flex items-center gap-3 mt-1">
+            <span class="text-sm text-gray-500">Veckopeng: <strong class="text-gray-700"><?= formatKr($child['weekly_amount']) ?></strong></span>
+            <?php if ($totals['adjustments'] != 0): ?>
+            <span class="text-sm <?= $totals['adjustments'] > 0 ? 'text-green-600' : 'text-red-500' ?>">
+              <?= $totals['adjustments'] > 0 ? '+' : '' ?><?= formatKr($totals['adjustments']) ?>
+            </span>
+            <?php endif; ?>
+          </div>
+          <div class="mt-2 flex items-center gap-2">
+            <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+              <?php $pct = $totals['req_total'] > 0 ? round(100 * $totals['req_done'] / $totals['req_total']) : 0; ?>
+              <div class="h-1.5 rounded-full bg-indigo-500" style="width:<?= $pct ?>%"></div>
+            </div>
+            <span class="text-xs text-gray-400"><?= $totals['req_done'] ?>/<?= $totals['req_total'] ?> krav</span>
+          </div>
+        </div>
+        <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </div>
-      <?php endif; ?>
-    </div>
+    </a>
     <?php endforeach; ?>
   </div>
   <?php endif; ?>

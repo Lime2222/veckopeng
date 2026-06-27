@@ -4,13 +4,17 @@ require_once dirname(__DIR__) . '/src/auth.php';
 require_once dirname(__DIR__) . '/src/functions.php';
 
 $user = requireApiAuth();
-if (!verifyCsrf()) { $_SESSION['flash_error'] = 'CSRF-fel.'; header('Location: /dashboard.php'); exit; }
+
+$redirect = $_POST['redirect'] ?? '/family.php';
+if (!preg_match('#^/[a-zA-Z0-9/_\-.?=&]*$#', $redirect)) $redirect = '/family.php';
+
+if (!verifyCsrf()) { $_SESSION['flash_error'] = 'CSRF-fel.'; header('Location: ' . $redirect); exit; }
 
 $childId   = (int)($_POST['child_id'] ?? 0);
 $direction = $_POST['direction'] ?? '';
 
 if (!$childId || !in_array($direction, ['up', 'down'])) {
-    header('Location: /dashboard.php');
+    header('Location: ' . $redirect);
     exit;
 }
 
@@ -26,7 +30,6 @@ if (count(array_unique($orders)) === 1) {
         $db->prepare('UPDATE family_members SET sort_order = ? WHERE child_id = ? AND user_id = ?')
            ->execute([$i, $c['id'], $user['id']]);
     }
-    // Re-fetch with fresh sort_orders
     $children = getChildren($user['id']);
 }
 
@@ -36,11 +39,11 @@ foreach ($children as $i => $c) {
     if ($c['id'] === $childId) { $idx = $i; break; }
 }
 
-if ($idx === null) { header('Location: /dashboard.php'); exit; }
+if ($idx === null) { header('Location: ' . $redirect); exit; }
 
 $swapIdx = $direction === 'up' ? $idx - 1 : $idx + 1;
 if ($swapIdx < 0 || $swapIdx >= count($children)) {
-    header('Location: /dashboard.php');
+    header('Location: ' . $redirect);
     exit;
 }
 
@@ -54,5 +57,5 @@ $db->prepare('UPDATE family_members SET sort_order = ? WHERE child_id = ? AND us
 $db->prepare('UPDATE family_members SET sort_order = ? WHERE child_id = ? AND user_id = ?')
    ->execute([$orderA, $children[$swapIdx]['id'], $user['id']]);
 
-header('Location: /dashboard.php');
+header('Location: ' . $redirect);
 exit;

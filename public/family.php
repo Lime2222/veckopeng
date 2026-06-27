@@ -42,6 +42,52 @@ pageNav($user['name'], 0);
   <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><?= htmlspecialchars($success) ?></div>
   <?php endif; ?>
 
+  <!-- Child order -->
+  <?php if (count($children) > 1): ?>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">Ordning på barnen</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Ändrar ordningen i menyn och på startsidan</p>
+    </div>
+    <div class="divide-y divide-gray-50">
+      <?php foreach ($children as $i => $c):
+        $isFirst = $i === 0;
+        $isLast  = $i === count($children) - 1;
+      ?>
+      <div class="px-5 py-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+             style="background-color:<?= htmlspecialchars($c['avatar_color']) ?>">
+          <?= mb_substr($c['name'], 0, 1) ?>
+        </div>
+        <span class="flex-1 text-gray-800 text-sm font-medium"><?= htmlspecialchars($c['name']) ?></span>
+        <div class="flex gap-1">
+          <form method="POST" action="/api/reorder_child.php">
+            <input type="hidden" name="csrf"      value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="child_id"  value="<?= $c['id'] ?>">
+            <input type="hidden" name="direction" value="up">
+            <input type="hidden" name="redirect"  value="/family.php">
+            <button type="submit" <?= $isFirst ? 'disabled' : '' ?>
+                    class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors <?= $isFirst ? 'text-gray-200 cursor-default' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' ?>">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
+            </button>
+          </form>
+          <form method="POST" action="/api/reorder_child.php">
+            <input type="hidden" name="csrf"      value="<?= htmlspecialchars(csrf()) ?>">
+            <input type="hidden" name="child_id"  value="<?= $c['id'] ?>">
+            <input type="hidden" name="direction" value="down">
+            <input type="hidden" name="redirect"  value="/family.php">
+            <button type="submit" <?= $isLast ? 'disabled' : '' ?>
+                    class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors <?= $isLast ? 'text-gray-200 cursor-default' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' ?>">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <?php if (!$refChild): ?>
   <div class="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
     <span class="text-5xl block mb-3">👶</span>
