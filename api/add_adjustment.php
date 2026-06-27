@@ -15,7 +15,10 @@ $date      = $body['date'] ?? date('Y-m-d');
 
 if (!$childId || !$amount || !$desc) jsonOut(['error' => 'Ogiltiga parametrar'], 400);
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
-requireChildOwnership($childId, $user['id']);
+$childMember = requireChildOwnership($childId, $user['id']);
+if ($childMember['role'] === 'child' && !$childMember['child_can_self_adjust']) {
+    jsonOut(['error' => 'Du har inte rättighet att lägga till händelser.'], 403);
+}
 
 // Check week lock
 $lockWs = weekStart($date);

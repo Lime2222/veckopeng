@@ -107,6 +107,22 @@ pageNav($user['name'], 0);
       </form>
     </div>
 
+    <!-- Self-adjust toggle -->
+    <div class="px-5 py-4 border-b border-gray-50">
+      <form action="/api/toggle_child_self_adjust.php" method="POST" class="flex items-center justify-between gap-4">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <input type="hidden" name="child_id" value="<?= $id ?>">
+        <div>
+          <p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($child['name']) ?> kan använda snabbknappar</p>
+          <p class="text-xs text-gray-400 mt-0.5">Låter barnet ge sig själv bonus eller avdrag</p>
+        </div>
+        <button type="submit"
+                class="flex-shrink-0 text-sm px-4 py-2 rounded-xl font-semibold transition-colors <?= $child['child_can_self_adjust'] ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' ?>">
+          <?= $child['child_can_self_adjust'] ? 'Ja' : 'Nej' ?>
+        </button>
+      </form>
+    </div>
+
     <!-- Linked child account -->
     <?php if ($childAccountMember): ?>
     <div class="px-5 py-4 border-b border-gray-50 flex items-center gap-3">

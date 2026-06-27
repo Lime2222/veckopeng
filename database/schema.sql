@@ -39,7 +39,8 @@ ALTER TABLE requirements ADD COLUMN IF NOT EXISTS weekly_target_minutes INTEGER;
 ALTER TABLE daily_logs   ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
 -- Child account support
-ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_report BOOLEAN DEFAULT false NOT NULL;
+ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_report  BOOLEAN DEFAULT false NOT NULL;
+ALTER TABLE children    ADD COLUMN IF NOT EXISTS child_can_self_adjust BOOLEAN DEFAULT false NOT NULL;
 ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'parent' NOT NULL;
 DO $$ BEGIN
     ALTER TABLE family_members DROP CONSTRAINT family_members_role_check;

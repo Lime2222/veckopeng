@@ -11,7 +11,10 @@ $adjId = (int)($body['adjustment_id'] ?? 0);
 $childId = (int)($body['child_id'] ?? 0);
 
 if (!$adjId || !$childId) jsonOut(['error' => 'Ogiltiga parametrar'], 400);
-requireChildOwnership($childId, $user['id']);
+$childMember = requireChildOwnership($childId, $user['id']);
+if ($childMember['role'] === 'child' && !$childMember['child_can_self_adjust']) {
+    jsonOut(['error' => 'Du har inte rättighet att ta bort händelser.'], 403);
+}
 
 $stmt = db()->prepare('SELECT * FROM adjustments WHERE id = ? AND child_id = ?');
 $stmt->execute([$adjId, $childId]);
