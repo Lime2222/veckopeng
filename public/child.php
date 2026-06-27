@@ -31,10 +31,30 @@ $prevWeek = (new DateTime($ws))->modify('-7 days')->format('Y-m-d');
 $nextWeek = (new DateTime($ws))->modify('+7 days')->format('Y-m-d');
 $isCurrentWeek = $ws === weekStart();
 
+$allChildren = !$isChildUser ? getChildren($user['id']) : [];
+
 pageHead($child['name']);
 pageNav($user['name'], $child['id'], $isChildUser);
 ?>
 <main class="max-w-lg mx-auto px-4 py-4" x-data="weekView()" x-init="init()">
+
+  <?php if (count($allChildren) > 1): ?>
+  <!-- Child switcher -->
+  <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+    <?php foreach ($allChildren as $c): ?>
+    <?php $isActive = $c['id'] === $child['id']; ?>
+    <a href="/child.php?id=<?= $c['id'] ?>"
+       class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm transition-all <?= $isActive ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300' ?>"
+       style="<?= $isActive ? 'background-color:' . htmlspecialchars($c['avatar_color']) : '' ?>">
+      <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold <?= $isActive ? 'bg-white bg-opacity-25 text-white' : 'text-white' ?>"
+            style="<?= !$isActive ? 'background-color:' . htmlspecialchars($c['avatar_color']) : '' ?>">
+        <?= mb_substr($c['name'], 0, 1) ?>
+      </span>
+      <?= htmlspecialchars($c['name']) ?>
+    </a>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
 
   <!-- Week navigation -->
   <div class="flex items-center justify-between mb-4">
