@@ -201,6 +201,23 @@ function getWeeklyHistory(int $childId, int $limit = 12): array {
     return $stmt->fetchAll();
 }
 
+function getPaymentTotalsPerParent(int $userId): array {
+    $stmt = db()->prepare('
+        SELECT u.id, u.name, SUM(ws.final_amount) AS total
+        FROM weekly_summaries ws
+        JOIN users u ON u.id = ws.paid_by_user_id
+        WHERE ws.child_id IN (
+            SELECT child_id FROM family_members WHERE user_id = ?
+        )
+        AND ws.status = \'paid\'
+        AND ws.paid_by_user_id IS NOT NULL
+        GROUP BY u.id, u.name
+        ORDER BY total DESC
+    ');
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
 const SWEDISH_DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const SHORT_DAYS   = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
 const STATUS_LABELS = [

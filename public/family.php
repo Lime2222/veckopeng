@@ -14,9 +14,10 @@ foreach ($children as $c) {
 }
 if (!$refChild && !empty($children)) $refChild = $children[0];
 
-$requirements = $refChild ? getRequirements($refChild['id'], false) : [];
-$deductTypes  = $refChild ? getDeductionTypes($refChild['id'], false) : [];
-$refId        = $refChild ? (int)$refChild['id'] : 0;
+$requirements   = $refChild ? getRequirements($refChild['id'], false) : [];
+$deductTypes    = $refChild ? getDeductionTypes($refChild['id'], false) : [];
+$refId          = $refChild ? (int)$refChild['id'] : 0;
+$paymentTotals  = getPaymentTotalsPerParent($user['id']);
 
 $error   = $_SESSION['flash_error']   ?? ''; unset($_SESSION['flash_error']);
 $success = $_SESSION['flash_success'] ?? ''; unset($_SESSION['flash_success']);
@@ -95,6 +96,42 @@ pageNav($user['name'], 0);
     <p class="text-gray-400 text-sm mt-1">Lägg till ett barn på startsidan för att se familjeinställningar</p>
   </div>
   <?php else: ?>
+
+  <!-- Payment totals per parent -->
+  <?php if (!empty($paymentTotals)): ?>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">Betalningslogg</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Totalt utbetalt veckopeng per person</p>
+    </div>
+    <div class="divide-y divide-gray-50">
+      <?php
+        $grandTotal = array_sum(array_column($paymentTotals, 'total'));
+      ?>
+      <?php foreach ($paymentTotals as $row): ?>
+      <?php $pct = $grandTotal > 0 ? round(100 * $row['total'] / $grandTotal) : 0; ?>
+      <div class="px-5 py-3">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-sm font-medium text-gray-800"><?= htmlspecialchars($row['name']) ?></span>
+          <span class="text-sm font-bold text-gray-900"><?= formatKr($row['total']) ?></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full bg-indigo-500" style="width:<?= $pct ?>%"></div>
+          </div>
+          <span class="text-xs text-gray-400 w-8 text-right"><?= $pct ?>%</span>
+        </div>
+      </div>
+      <?php endforeach; ?>
+      <?php if (count($paymentTotals) > 1): ?>
+      <div class="px-5 py-3 flex justify-between">
+        <span class="text-xs text-gray-400">Totalt</span>
+        <span class="text-xs font-semibold text-gray-600"><?= formatKr($grandTotal) ?></span>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- Requirements -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">

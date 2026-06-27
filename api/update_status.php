@@ -21,5 +21,7 @@ $stmt = db()->prepare('
 $stmt->execute([$user['id'], $summaryId]);
 if (!$stmt->fetch()) jsonOut(['error' => 'Ej behörig'], 403);
 
-db()->prepare('UPDATE weekly_summaries SET status = ? WHERE id = ?')->execute([$status, $summaryId]);
+$paidBy = ($status === 'paid') ? $user['id'] : null;
+db()->prepare('UPDATE weekly_summaries SET status = ?, paid_by_user_id = ? WHERE id = ?')
+    ->execute([$status, $paidBy, $summaryId]);
 jsonOut(['ok' => true, 'status' => $status]);
