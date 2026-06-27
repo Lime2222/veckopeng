@@ -269,14 +269,22 @@ pageNav($user['name'], 0);
     <?php endif; ?>
   </div>
 
-  <!-- Danger zone -->
+  <!-- Borttag/Återställ -->
   <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-5 mb-6" x-data="{ open: false }">
     <button @click="open=!open" class="w-full flex items-center justify-between text-left">
-      <span class="font-bold text-red-700">Farozon</span>
+      <span class="font-bold text-red-700">Borttag/Återställ</span>
       <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 text-red-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
-    <div x-show="open" x-cloak class="mt-4 pt-4 border-t border-red-100">
-      <p class="text-sm text-gray-600 mb-3">Ta bort barnprofilen och all data permanent.</p>
+    <div x-show="open" x-cloak class="mt-4 pt-4 border-t border-red-100 space-y-3">
+      <form action="/api/reset_current_week.php" method="POST"
+            onsubmit="return confirm('Återställ innevarande vecka för <?= addslashes(htmlspecialchars($child['name'])) ?>? Veckan öppnas igen och kan redigeras.')">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <input type="hidden" name="child_id" value="<?= $id ?>">
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl transition-colors">
+          Återställ nuvarande vecka
+        </button>
+      </form>
+      <p class="text-sm text-gray-600">Ta bort barnprofilen och all data permanent.</p>
       <form action="/api/delete_child.php" method="POST" onsubmit="return confirm('Är du säker? All data för <?= addslashes(htmlspecialchars($child['name'])) ?> raderas permanent.')">
         <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
         <input type="hidden" name="child_id" value="<?= $id ?>">
