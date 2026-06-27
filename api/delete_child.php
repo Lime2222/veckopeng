@@ -9,7 +9,12 @@ if (!verifyCsrf()) { $_SESSION['flash_error'] = 'Sessionsfel.'; header('Location
 $childId = (int)($_POST['child_id'] ?? 0);
 if (!$childId) { header('Location: /dashboard.php'); exit; }
 
-$child = requireChildOwner($childId, $user['id']);
+$child = requireChildOwnership($childId, $user['id']);
+if ($child['role'] !== 'owner') {
+    $_SESSION['flash_error'] = 'Bara ägaren kan ta bort en barnprofil.';
+    header('Location: /settings.php?id=' . $childId);
+    exit;
+}
 db()->prepare('DELETE FROM children WHERE id = ?')->execute([$childId]);
 $_SESSION['flash_success'] = htmlspecialchars($child['name']) . ' har tagits bort.';
 header('Location: /dashboard.php');
