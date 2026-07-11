@@ -30,7 +30,7 @@ pageNav($user['name']);
       <p class="text-gray-500 text-sm mt-0.5">Vecka <?= date('W') ?> · <?= date('j M') ?></p>
     </div>
     <div class="flex items-center">
-    <a href="/info.php" class="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Om Veckoswishen">
+    <a href="/info.php" class="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Om Veckoswisha">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     </a>
     <a href="/family.php" class="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Familjeinställningar">

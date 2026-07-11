@@ -6,14 +6,14 @@ require_once dirname(__DIR__) . '/src/layout.php';
 
 $user = requireAuth();
 
-pageHead('Om Veckoswishen');
+pageHead('Om Veckoswisha');
 pageNav($user['name']);
 ?>
 <main class="max-w-lg mx-auto px-4 py-6 space-y-6">
 
   <div class="text-center">
     <span class="text-5xl">🪙</span>
-    <h1 class="text-2xl font-bold text-gray-900 mt-2">Om Veckoswishen</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mt-2">Om Veckoswisha</h1>
     <p class="text-gray-500 text-sm mt-1">Hantera barnens veckopeng enkelt — och lär dem något på köpet</p>
   </div>
 
@@ -34,7 +34,7 @@ pageNav($user['name']);
     <p class="text-sm text-gray-600 leading-relaxed">
       Nyckeln är att reglerna är <strong>förutsägbara och rättvisa</strong>: barnet ska i
       förväg veta vad som förväntas och vad som händer om något missas. Det är precis det
-      Veckoswishen hjälper till med — samma regler varje vecka, synliga för alla.
+      Veckoswisha hjälper till med — samma regler varje vecka, synliga för alla.
     </p>
   </div>
 
@@ -65,7 +65,7 @@ pageNav($user['name']);
     <p class="text-sm text-gray-600 leading-relaxed">
       Forskningen skiljer dessutom på <strong>olika sorters skärmtid</strong>: att skapa,
       lära och spela tillsammans är inte samma sak som passivt flöde av korta klipp.
-      Därför delar Veckoswishen upp skärmtiden i kategorier — 🎮 Speltid,
+      Därför delar Veckoswisha upp skärmtiden i kategorier — 🎮 Speltid,
       📺 TV &amp; YouTube, 🤳 TikTok &amp; Reels och 🧠 Lärospel &amp; Pussel — så att
       familjens budget kan vara generös där tiden ger något, och stram där den mest rinner iväg.
     </p>
@@ -73,7 +73,7 @@ pageNav($user['name']);
 
   <!-- Funktioner -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-    <h2 class="font-bold text-gray-900 mb-3">🧭 Så funkar Veckoswishen</h2>
+    <h2 class="font-bold text-gray-900 mb-3">🧭 Så funkar Veckoswisha</h2>
     <div class="space-y-4">
 
       <div class="flex gap-3">

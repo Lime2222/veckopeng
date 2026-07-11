@@ -16,7 +16,7 @@ unset($_SESSION['auth_error']);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Veckoswishen – Logga in</title>
+<title>Veckoswisha – Logga in</title>
 <meta name="description" content="Hantera barnens veckopeng enkelt">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
@@ -25,7 +25,7 @@ unset($_SESSION['auth_error']);
 <div class="w-full max-w-md">
   <div class="text-center mb-8">
     <span class="text-6xl">🪙</span>
-    <h1 class="text-3xl font-bold text-indigo-700 mt-2">Veckoswishen</h1>
+    <h1 class="text-3xl font-bold text-indigo-700 mt-2">Veckoswisha</h1>
     <p class="text-gray-500 mt-1">Hantera barnens veckopeng enkelt</p>
   </div>
 
