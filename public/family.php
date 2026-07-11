@@ -18,6 +18,7 @@ $requirements   = $refChild ? getRequirements($refChild['id'], false) : [];
 $deductTypes    = $refChild ? getDeductionTypes($refChild['id'], false) : [];
 $refId          = $refChild ? (int)$refChild['id'] : 0;
 $paymentTotals  = getPaymentTotalsPerParent($user['id']);
+$policyCfg      = $refChild ? getFamilyPolicy($refChild['id']) : ['policy' => 'none', 'penalty' => 0.0];
 
 $error   = $_SESSION['flash_error']   ?? ''; unset($_SESSION['flash_error']);
 $success = $_SESSION['flash_success'] ?? ''; unset($_SESSION['flash_success']);
@@ -225,6 +226,52 @@ pageNav($user['name'], 0);
                class="flex-1 px-3 py-3 border border-indigo-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         <span class="text-xs text-gray-400 whitespace-nowrap">min/vecka</span>
       </div>
+    </form>
+  </div>
+
+  <!-- Veckopengsregler -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4" x-data="{ policy: '<?= htmlspecialchars($policyCfg['policy']) ?>' }">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-900">⚖️ Veckopengsregler</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Vad händer med bas-veckopengen när krav missas?</p>
+    </div>
+    <form action="/api/set_family_policy.php" method="POST" class="p-5 space-y-2">
+      <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+      <input type="hidden" name="child_id" value="<?= $refId ?>">
+
+      <?php
+      $policyOptions = [
+          'none'    => ['😊 Basen betalas alltid ut',        'Missade krav påverkar inte veckopengen'],
+          'fixed'   => ['💸 Fast avdrag per missat krav',    'Ett bestämt belopp dras av för varje miss'],
+          'percent' => ['📉 Procentavdrag per missat krav',  'En andel av basen dras av för varje miss'],
+          'all'     => ['🔒 Alla krav krävs',                'Ett enda missat krav ger 0 kr i bas'],
+      ];
+      foreach ($policyOptions as $val => [$label, $desc]): ?>
+      <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+             :class="policy === '<?= $val ?>' ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'">
+        <input type="radio" name="policy" value="<?= $val ?>" x-model="policy" class="mt-1 accent-indigo-600">
+        <span>
+          <span class="block text-sm font-semibold text-gray-800"><?= $label ?></span>
+          <span class="block text-xs text-gray-400 mt-0.5"><?= $desc ?></span>
+        </span>
+      </label>
+      <?php endforeach; ?>
+
+      <div x-show="policy === 'fixed' || policy === 'percent'" x-cloak class="flex items-center gap-2 pt-1">
+        <span class="text-sm text-gray-600">Avdrag per missat krav:</span>
+        <input type="number" name="penalty" value="<?= $policyCfg['penalty'] > 0 ? htmlspecialchars(rtrim(rtrim(number_format($policyCfg['penalty'], 2, '.', ''), '0'), '.')) : '' ?>"
+               min="0" step="0.5" placeholder="t.ex. 5"
+               class="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <span class="text-sm text-gray-500" x-text="policy === 'percent' ? '% av basen' : 'kr'"></span>
+      </div>
+
+      <p class="text-xs text-gray-400 pt-1">
+        Ett "missat krav" = en passerad dag utan bock för dagliga krav, eller ett vecko-/minutkrav
+        som inte klarats när veckan är slut. Avdraget syns direkt på barnets sida och kan aldrig
+        bli mer än basen. Bonusar och avdrag från knapparna påverkas inte.
+      </p>
+
+      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors">Spara regler</button>
     </form>
   </div>
 

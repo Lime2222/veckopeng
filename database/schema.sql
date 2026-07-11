@@ -146,6 +146,14 @@ CREATE TABLE IF NOT EXISTS child_requirement_exclusions (
     PRIMARY KEY (child_id, requirement_id)
 );
 
+-- Familjeregler: vad som händer med bas-veckopengen när krav missas.
+-- Lagras på familjens ägarkonto (samma nyckel som kraven, users.id = children.user_id).
+-- req_policy: none = basen betalas alltid | all = 0 kr i bas om något krav missas
+--             percent = req_penalty % av basen dras per missat krav
+--             fixed   = req_penalty kr dras per missat krav
+ALTER TABLE users ADD COLUMN IF NOT EXISTS req_policy  VARCHAR(10)   DEFAULT 'none' NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS req_penalty NUMERIC(10,2) DEFAULT 0 NOT NULL;
+
 -- Login attempt log (admin page shows failures; pruned on successful logins)
 CREATE TABLE IF NOT EXISTS login_attempts (
     id         SERIAL PRIMARY KEY,

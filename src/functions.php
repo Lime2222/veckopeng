@@ -135,6 +135,21 @@ function getWeekAdjustments(int $childId, string $weekStart): array {
     return $stmt->fetchAll();
 }
 
+function getFamilyPolicy(int $childId): array {
+    try {
+        $stmt = db()->prepare('SELECT req_policy, req_penalty FROM users WHERE id = (SELECT user_id FROM children WHERE id = ?)');
+        $stmt->execute([$childId]);
+        $row = $stmt->fetch();
+        return [
+            'policy'  => $row['req_policy'] ?? 'none',
+            'penalty' => (float)($row['req_penalty'] ?? 0),
+        ];
+    } catch (Throwable $e) {
+        // Kolumnerna saknas tills migrationen körts - bete dig som tidigare
+        return ['policy' => 'none', 'penalty' => 0.0];
+    }
+}
+
 function getWeekTotals(int $childId, string $weekStart): array {
     $weekEnd = (new DateTime($weekStart))->modify('+6 days')->format('Y-m-d');
 
@@ -150,35 +165,69 @@ function getWeekTotals(int $childId, string $weekStart): array {
     $stmt->execute([$childId]);
     $base = (float)$stmt->fetchColumn();
 
+    // Missade krav räknas först när tillfället passerat: en daglig bock är
+    // missad när dagen är slut, vecko-/minutkrav när hela veckan är slut.
+    $today       = date('Y-m-d');
+    $weekOver    = $today > $weekEnd;
+    $elapsedDays = $weekOver ? 7
+        : max(0, min(7, (int)round((strtotime($today) - strtotime($weekStart)) / 86400)));
+    $dailyCutoff = $weekOver ? $weekEnd : date('Y-m-d', strtotime($today . ' -1 day'));
+
     $reqs  = getRequirements($childId);
     $total = 0;
     $completed = 0;
+    $missed = 0;
     foreach ($reqs as $req) {
         if ($req['type'] === 'minutes') {
             $total += 1;
             $target = (int)($req['weekly_target_minutes'] ?? 0);
+            $done = false;
             if ($target > 0) {
                 $s = db()->prepare('SELECT COALESCE(SUM(minutes),0) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ?');
                 $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
-                if ((int)$s->fetchColumn() >= $target) $completed += 1;
+                $done = (int)$s->fetchColumn() >= $target;
             }
+            if ($done) $completed += 1;
+            elseif ($weekOver) $missed += 1;
         } elseif ($req['frequency'] === 'weekly') {
             $total += 1;
             $s = db()->prepare('SELECT COUNT(*) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ? AND completed=true');
             $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
-            if ((int)$s->fetchColumn() > 0) $completed += 1;
+            $done = (int)$s->fetchColumn() > 0;
+            if ($done) $completed += 1;
+            elseif ($weekOver) $missed += 1;
         } else {
             $total += 7;
             $s = db()->prepare('SELECT COUNT(*) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ? AND completed=true');
             $s->execute([$req['id'], $childId, $weekStart, $weekEnd]);
             $completed += (int)$s->fetchColumn();
+            if ($elapsedDays > 0 && $dailyCutoff >= $weekStart) {
+                $s = db()->prepare('SELECT COUNT(*) FROM daily_logs WHERE requirement_id=? AND child_id=? AND log_date BETWEEN ? AND ? AND completed=true');
+                $s->execute([$req['id'], $childId, $weekStart, $dailyCutoff]);
+                $missed += max(0, $elapsedDays - (int)$s->fetchColumn());
+            }
         }
+    }
+
+    // Familjens regel för missade krav
+    $cfg = getFamilyPolicy($childId);
+    $penalty = 0.0;
+    if ($missed > 0 && $base > 0) {
+        switch ($cfg['policy']) {
+            case 'all':     $penalty = $base; break;
+            case 'percent': $penalty = min($base, round($base * $cfg['penalty'] / 100, 2) * $missed); break;
+            case 'fixed':   $penalty = min($base, $cfg['penalty'] * $missed); break;
+        }
+        $penalty = min($base, $penalty);
     }
 
     return [
         'base'         => $base,
         'adjustments'  => $adj,
-        'final'        => max(0, $base + $adj),
+        'penalty'      => $penalty,
+        'missed'       => $missed,
+        'policy'       => $cfg['policy'],
+        'final'        => max(0, $base - $penalty + $adj),
         'req_done'     => $completed,
         'req_total'    => $total,
     ];

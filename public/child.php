@@ -85,6 +85,9 @@ pageNav($user['name'], $child['id'], $isChildUser);
       </div>
       <div class="text-right">
         <p class="text-indigo-200 text-xs">Bas: <?= formatKr($totals['base']) ?></p>
+        <?php if (!empty($totals['penalty'])): ?>
+        <p class="text-xs text-red-300">Missade krav: −<?= formatKr($totals['penalty']) ?></p>
+        <?php endif; ?>
         <?php if ($totals['adjustments'] != 0): ?>
         <p class="text-xs <?= $totals['adjustments'] > 0 ? 'text-green-300' : 'text-red-300' ?>">
           <?= $totals['adjustments'] > 0 ? '+' : '' ?><?= formatKr($totals['adjustments']) ?>
@@ -240,6 +243,34 @@ pageNav($user['name'], $child['id'], $isChildUser);
   </div>
   <?php endif; ?>
 
+  <!-- Free-text adjustment -->
+  <?php if (!$isLocked && (!$isChildUser || $canSelfAdjust)): ?>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-4 py-3 border-b border-gray-50">
+      <h2 class="font-semibold text-gray-900">Eget avdrag / bonus</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Engångshändelse för <?= date('j/n', strtotime($selDate)) ?> – behöver ingen knapp</p>
+    </div>
+    <div class="p-4 space-y-2">
+      <div class="flex gap-2">
+        <input type="number" id="free-amount" min="0" step="0.5" placeholder="Kr" inputmode="decimal"
+               class="w-24 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <input type="text" id="free-desc" placeholder="Vad hände? t.ex. Hjälpte mormor" maxlength="200"
+               class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-0">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="freeAdjustment(<?= $child['id'] ?>, '<?= addslashes($selDate) ?>', -1)"
+                class="touch-btn py-3 rounded-xl bg-red-50 border border-red-100 text-red-700 font-bold text-sm hover:bg-red-100 active:scale-95 transition-all">
+          − Avdrag
+        </button>
+        <button onclick="freeAdjustment(<?= $child['id'] ?>, '<?= addslashes($selDate) ?>', 1)"
+                class="touch-btn py-3 rounded-xl bg-green-50 border border-green-100 text-green-700 font-bold text-sm hover:bg-green-100 active:scale-95 transition-all">
+          + Bonus
+        </button>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- Week adjustments list -->
   <?php if (!empty($weekAdj)): ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
@@ -291,8 +322,12 @@ pageNav($user['name'], $child['id'], $isChildUser);
         <h2 class="font-bold text-gray-900">Veckosammanställning</h2>
         <span class="text-xs font-semibold px-2.5 py-1 rounded-full <?= STATUS_LABELS[$summary['status']]['class'] ?>"><?= STATUS_LABELS[$summary['status']]['label'] ?></span>
       </div>
+      <?php $sumPenalty = max(0, (float)$summary['base_amount'] + (float)$summary['total_adjustments'] - (float)$summary['final_amount']); ?>
       <div class="space-y-2 text-sm mb-4">
         <div class="flex justify-between"><span class="text-gray-500">Bas veckopeng</span><span class="font-medium"><?= formatKr($summary['base_amount']) ?></span></div>
+        <?php if ($sumPenalty > 0): ?>
+        <div class="flex justify-between"><span class="text-gray-500">Missade krav</span><span class="font-medium text-red-500">−<?= formatKr($sumPenalty) ?></span></div>
+        <?php endif; ?>
         <div class="flex justify-between"><span class="text-gray-500">Avdrag / Bonus</span>
           <span class="font-medium <?= $summary['total_adjustments'] >= 0 ? 'text-green-600' : 'text-red-500' ?>">
             <?= $summary['total_adjustments'] > 0 ? '+' : '' ?><?= formatKr($summary['total_adjustments']) ?>
@@ -396,6 +431,16 @@ async function addAdjustment(childId, typeId, date, desc, amount) {
   location.reload();
 }
 
+
+async function freeAdjustment(childId, date, sign) {
+  const amtEl  = document.getElementById('free-amount');
+  const descEl = document.getElementById('free-desc');
+  const amount = Math.abs(parseFloat((amtEl.value || '').replace(',', '.')));
+  const desc   = descEl.value.trim();
+  if (!amount || isNaN(amount)) { alert('Fyll i ett belopp i kronor.'); amtEl.focus(); return; }
+  if (!desc) { alert('Skriv vad som hände.'); descEl.focus(); return; }
+  await addAdjustment(childId, null, date, desc, sign * amount);
+}
 
 async function deleteAdjustment(adjId, childId) {
   if (!confirm('Ta bort denna händelse?')) return;
