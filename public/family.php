@@ -35,7 +35,7 @@ function addChildForm(): void { ?>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Veckopeng (kr)</label>
-          <input type="number" name="weekly_amount" value="50" min="0" step="0.5" required
+          <input type="number" name="weekly_amount" value="<?= htmlspecialchars(getSetting('default_weekly_amount', '50')) ?>" min="0" step="0.5" required
                  class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
         </div>
         <div>

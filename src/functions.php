@@ -151,6 +151,23 @@ function getFamilyPolicy(int $childId): array {
     }
 }
 
+function getSetting(string $key, ?string $default = null): ?string {
+    try {
+        $stmt = db()->prepare('SELECT value FROM app_settings WHERE key = ?');
+        $stmt->execute([$key]);
+        $v = $stmt->fetchColumn();
+        return $v === false ? $default : $v;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
+function setSetting(string $key, string $value): void {
+    db()->prepare('INSERT INTO app_settings (key, value) VALUES (?, ?)
+                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value')
+        ->execute([$key, $value]);
+}
+
 function formatMin(int $m): string {
     $h = intdiv(abs($m), 60);
     $r = abs($m) % 60;

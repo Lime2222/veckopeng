@@ -13,6 +13,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['suggestion_done']) &&
     header('Location: /admin.php'); exit;
 }
 
+// Standard för nya konton: spara standardvärden och hantera default-krav/knappar
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action']) && verifyCsrf()) {
+    $aact = $_POST['admin_action'];
+    if ($aact === 'save_defaults') {
+        $wa = trim($_POST['default_weekly_amount'] ?? '50');
+        $sb = trim($_POST['default_screen_budget'] ?? '');
+        setSetting('default_weekly_amount', (string)max(0, (float)str_replace(',', '.', $wa)));
+        setSetting('default_screen_budget', ($sb !== '' && (int)$sb > 0) ? (string)(int)$sb : '');
+    } elseif ($aact === 'add_def_dt') {
+        $n = trim($_POST['name'] ?? '');
+        $a = (float)str_replace(',', '.', $_POST['amount'] ?? '0');
+        $u = ($_POST['unit'] ?? 'kr') === 'min' ? 'min' : 'kr';
+        if ($n !== '' && $a != 0) {
+            db()->prepare('INSERT INTO default_deduction_types (name, amount, unit) VALUES (?, ?, ?)')
+                ->execute([$n, $a, $u]);
+        }
+    } elseif ($aact === 'del_def_dt') {
+        db()->prepare('DELETE FROM default_deduction_types WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+    } elseif ($aact === 'add_def_req') {
+        $n = trim($_POST['name'] ?? '');
+        $t = $_POST['rtype'] ?? 'daily';
+        if ($n !== '' && in_array($t, ['daily', 'weekly', 'minutes'], true)) {
+            $type = $t === 'minutes' ? 'minutes' : 'checkbox';
+            $freq = $t === 'daily' ? 'daily' : 'weekly';
+            $tm   = $t === 'minutes' ? max(1, (int)($_POST['target_minutes'] ?? 60)) : null;
+            db()->prepare('INSERT INTO default_requirements (name, type, frequency, weekly_target_minutes) VALUES (?, ?, ?, ?)')
+                ->execute([$n, $type, $freq, $tm]);
+        }
+    } elseif ($aact === 'del_def_req') {
+        db()->prepare('DELETE FROM default_requirements WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+    }
+    header('Location: /admin.php'); exit;
+}
+
 function fmtTs(?string $ts): string {
     if (!$ts) return '–';
     return date('Y-m-d H:i', strtotime($ts));
@@ -121,6 +155,14 @@ $failedTop = db()->query("
     LIMIT 10
 ")->fetchAll();
 
+// ── Standard för nya konton ─────────────────────────────────────────────────
+$defWeekly = getSetting('default_weekly_amount', '50');
+$defScreen = getSetting('default_screen_budget', '');
+$defReqs = [];
+$defDts  = [];
+try { $defReqs = db()->query('SELECT * FROM default_requirements ORDER BY id')->fetchAll(); } catch (Throwable $e) {}
+try { $defDts  = db()->query('SELECT * FROM default_deduction_types ORDER BY id')->fetchAll(); } catch (Throwable $e) {}
+
 // ── Förslagslådan ───────────────────────────────────────────────────────────
 $suggestions = db()->query("
     SELECT s.id, s.message, s.done, s.created_at, u.name AS user_name, u.email AS user_email
@@ -173,6 +215,111 @@ pageNav($user['name']);
     </div>
     <?php endforeach; ?>
   </div>
+
+  <!-- Standard för nya konton -->
+  <section>
+    <h2 class="font-bold text-gray-900 text-lg mb-3">🧰 Standard för nya konton</h2>
+    <div class="grid gap-3 sm:grid-cols-2">
+
+      <!-- Standardvärden -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:col-span-2">
+        <h3 class="font-semibold text-gray-800 mb-1">Standardvärden</h3>
+        <p class="text-xs text-gray-400 mb-3">Används när ett nytt barn läggs till</p>
+        <form method="POST" class="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="admin_action" value="save_defaults">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Veckopeng (kr)</label>
+            <input type="number" name="default_weekly_amount" value="<?= htmlspecialchars($defWeekly) ?>" min="0" step="0.5"
+                   class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Skärmtidspott (min/vecka, tomt = av)</label>
+            <input type="number" name="default_screen_budget" value="<?= htmlspecialchars($defScreen ?? '') ?>" min="0" step="5"
+                   class="w-36 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          </div>
+          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">Spara</button>
+        </form>
+      </div>
+
+      <!-- Default-krav -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-semibold text-gray-800 mb-1">Default-krav</h3>
+        <p class="text-xs text-gray-400 mb-3">Sås in när ett konto skapar sitt första barn</p>
+        <div class="divide-y divide-gray-50 mb-3">
+          <?php foreach ($defReqs as $dr): ?>
+          <div class="py-2 flex items-center gap-2 text-sm">
+            <span class="flex-1 text-gray-800"><?= htmlspecialchars($dr['name']) ?></span>
+            <span class="text-xs text-gray-400">
+              <?= $dr['type'] === 'minutes' ? (int)$dr['weekly_target_minutes'] . ' min/v' : ($dr['frequency'] === 'weekly' ? 'Veckovis' : 'Daglig') ?>
+            </span>
+            <form method="POST" onsubmit="return confirm('Ta bort default-kravet?')">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+              <input type="hidden" name="admin_action" value="del_def_req">
+              <input type="hidden" name="id" value="<?= (int)$dr['id'] ?>">
+              <button type="submit" class="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 font-medium">✕</button>
+            </form>
+          </div>
+          <?php endforeach; ?>
+          <?php if (!$defReqs): ?><p class="text-xs text-gray-400 py-2">Inga — nya konton startar utan krav.</p><?php endif; ?>
+        </div>
+        <form method="POST" class="space-y-2" x-data="{ rt: 'daily' }">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="admin_action" value="add_def_req">
+          <div class="flex gap-2">
+            <input type="text" name="name" placeholder="Nytt krav" required
+                   class="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <select name="rtype" x-model="rt" class="px-2 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+              <option value="daily">Daglig</option>
+              <option value="weekly">Veckovis</option>
+              <option value="minutes">Minuter/v</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <input x-show="rt === 'minutes'" x-cloak type="number" name="target_minutes" min="1" placeholder="Mål min/v"
+                   class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-sm">
+            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">+ Lägg till</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Default-knappar -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-semibold text-gray-800 mb-1">Default-knappar (avdrag/bonus)</h3>
+        <p class="text-xs text-gray-400 mb-3">Sås in när ett konto skapar sitt första barn</p>
+        <div class="divide-y divide-gray-50 mb-3">
+          <?php foreach ($defDts as $dd): $da = (float)$dd['amount']; $du = $dd['unit'] ?? 'kr'; ?>
+          <div class="py-2 flex items-center gap-2 text-sm">
+            <span class="w-16 text-right font-bold text-xs flex-shrink-0 <?= $du === 'min' ? 'text-purple-600' : ($da >= 0 ? 'text-green-600' : 'text-red-500') ?>">
+              <?= $da > 0 ? '+' : '' ?><?= $du === 'min' ? (int)$da . ' min' : rtrim(rtrim(number_format($da, 2, ',', ''), '0'), ',') . ' kr' ?>
+            </span>
+            <span class="flex-1 text-gray-800 truncate"><?= htmlspecialchars($dd['name']) ?></span>
+            <form method="POST" onsubmit="return confirm('Ta bort default-knappen?')">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+              <input type="hidden" name="admin_action" value="del_def_dt">
+              <input type="hidden" name="id" value="<?= (int)$dd['id'] ?>">
+              <button type="submit" class="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 font-medium">✕</button>
+            </form>
+          </div>
+          <?php endforeach; ?>
+          <?php if (!$defDts): ?><p class="text-xs text-gray-400 py-2">Inga — nya konton startar utan knappar.</p><?php endif; ?>
+        </div>
+        <form method="POST" class="flex gap-2 flex-wrap">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="admin_action" value="add_def_dt">
+          <input type="number" name="amount" placeholder="-5 / +10" step="0.5" required
+                 class="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <select name="unit" class="px-2 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+            <option value="kr">kr</option>
+            <option value="min">min 📱</option>
+          </select>
+          <input type="text" name="name" placeholder="Beskrivning" required
+                 class="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">+</button>
+        </form>
+      </div>
+    </div>
+  </section>
 
   <!-- Förslagslådan -->
   <?php if ($suggestions): ?>

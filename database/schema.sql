@@ -174,6 +174,56 @@ CREATE TABLE IF NOT EXISTS screen_logs (
 
 CREATE INDEX IF NOT EXISTS idx_screen_logs_child_date ON screen_logs(child_id, log_date);
 
+-- Appinställningar (nyckel/värde) - bl.a. standardvärden för nya konton
+CREATE TABLE IF NOT EXISTS app_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO app_settings (key, value) VALUES
+    ('default_weekly_amount', '50'),
+    ('default_screen_budget', '600')
+ON CONFLICT (key) DO NOTHING;
+
+-- Standardkrav och standardknappar som sås in när ett nytt konto skapar sitt
+-- första barn - hanteras på admin-sidan
+CREATE TABLE IF NOT EXISTS default_requirements (
+    id                    SERIAL PRIMARY KEY,
+    name                  VARCHAR(200) NOT NULL,
+    type                  VARCHAR(20) DEFAULT 'checkbox' NOT NULL,
+    frequency             VARCHAR(10) DEFAULT 'daily' NOT NULL,
+    weekly_target_minutes INTEGER,
+    created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO default_requirements (name, type, frequency, weekly_target_minutes)
+SELECT v.n, v.t, v.f, v.m FROM (VALUES
+    ('Städa rummet', 'checkbox', 'weekly', NULL::integer),
+    ('Läsa böcker',  'minutes',  'weekly', 120)
+) AS v(n, t, f, m)
+WHERE NOT EXISTS (SELECT 1 FROM default_requirements);
+
+CREATE TABLE IF NOT EXISTS default_deduction_types (
+    id         SERIAL PRIMARY KEY,
+    name       VARCHAR(200) NOT NULL,
+    amount     NUMERIC(10,2) NOT NULL,
+    unit       VARCHAR(3) DEFAULT 'kr' NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO default_deduction_types (name, amount, unit)
+SELECT v.n, v.a, v.u FROM (VALUES
+    ('Ej dukat av tallriken',   -1::numeric,  'kr'),
+    ('Skärmtid över gränsen',   -10::numeric, 'kr'),
+    ('Bonus: Läxa klar tidigt',  10::numeric, 'kr')
+) AS v(n, a, u)
+WHERE NOT EXISTS (SELECT 1 FROM default_deduction_types);
+
+-- Engångs (2026-07-12): ge alla befintliga testbarn 10 h skärmtidspott.
+-- Daterad så framtida barn inte påverkas - de får sin pott från default-inställningen.
+UPDATE children SET screen_budget_minutes = 600
+WHERE screen_budget_minutes IS NULL AND created_at < '2026-07-13';
+
 -- Förslagslådan: förbättringstips från användarna, läses på admin-sidan
 CREATE TABLE IF NOT EXISTS suggestions (
     id         SERIAL PRIMARY KEY,
