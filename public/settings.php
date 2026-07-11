@@ -68,11 +68,18 @@ pageNav($user['name'], 0);
                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">📱 Skärmtidspott (min/vecka)</label>
-        <input type="number" name="screen_budget_minutes" value="<?= htmlspecialchars($child['screen_budget_minutes'] ?? '') ?>" min="0" step="5"
-               placeholder="t.ex. 600 = 10 timmar - lämna tomt för att stänga av"
-               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
-        <p class="text-xs text-gray-400 mt-1">Skärmtid loggas på barnets sida. Tid över potten kan kosta veckopeng (regel i Familjeinställningar), och bonusar i minuter fyller på potten.</p>
+        <label class="block text-sm font-medium text-gray-700 mb-2">📱 Skärmtid (min per dag, tomt = av)</label>
+        <?php $childBudgets = getScreenBudgets($id); ?>
+        <div class="grid grid-cols-2 gap-2">
+          <?php foreach (SCREEN_CATS as $catKey => [$catIcon, $catLabel]): ?>
+          <div>
+            <label class="block text-xs text-gray-500 mb-0.5"><?= $catIcon ?> <?= $catLabel ?></label>
+            <input type="number" name="screen_cat[<?= $catKey ?>]" value="<?= htmlspecialchars($childBudgets[$catKey] ?? '') ?>" min="0" step="5"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">Loggas per kategori på barnets sida, veckopotten = dagsbudget × 7. Tid över potten kan kosta veckopeng (regel i Familjeinställningar), bonusar i minuter kvittar överdrag.</p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Profilfärg</label>

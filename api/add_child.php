@@ -15,14 +15,22 @@ if (!$name) { $_SESSION['flash_error'] = 'Ange ett namn.'; header('Location: /da
 if (!preg_match('/^#[0-9a-f]{6}$/i', $color)) $color = '#6366f1';
 if ($weeklyAmount < 0) $weeklyAmount = 0;
 
-// Standardskärmtidspott för nya barn (admin-inställning, tomt/0 = av)
-$defScreen = getSetting('default_screen_budget', '');
-$screenBudget = ($defScreen !== null && trim($defScreen) !== '' && (int)$defScreen > 0) ? (int)$defScreen : null;
-
 $db   = db();
-$stmt = $db->prepare('INSERT INTO children (user_id, name, avatar_color, weekly_amount, screen_budget_minutes) VALUES (?, ?, ?, ?, ?) RETURNING id');
-$stmt->execute([$user['id'], $name, $color, $weeklyAmount, $screenBudget]);
+$stmt = $db->prepare('INSERT INTO children (user_id, name, avatar_color, weekly_amount) VALUES (?, ?, ?, ?) RETURNING id');
+$stmt->execute([$user['id'], $name, $color, $weeklyAmount]);
 $childId = (int)$stmt->fetchColumn();
+
+// Standardskärmtidsbudgetar per kategori (admin-inställningar, min/dag, tomt/0 = av)
+try {
+    foreach (SCREEN_CATS as $catKey => $_lbl) {
+        $def = getSetting('default_screen_' . $catKey, '');
+        if ($def !== null && trim($def) !== '' && (int)$def > 0) {
+            $db->prepare('INSERT INTO child_screen_budgets (child_id, category, daily_minutes) VALUES (?, ?, ?)
+                          ON CONFLICT (child_id, category) DO NOTHING')
+               ->execute([$childId, $catKey, (int)$def]);
+        }
+    }
+} catch (Throwable $e) { /* tabellen saknas tills migrationen körts */ }
 
 $db->prepare('INSERT INTO family_members (child_id, user_id, role) VALUES (?, ?, \'owner\')')->execute([$childId, $user['id']]);
 

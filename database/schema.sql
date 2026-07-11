@@ -219,10 +219,38 @@ SELECT v.n, v.a, v.u FROM (VALUES
 ) AS v(n, a, u)
 WHERE NOT EXISTS (SELECT 1 FROM default_deduction_types);
 
--- Engångs (2026-07-12): ge alla befintliga testbarn 10 h skärmtidspott.
--- Daterad så framtida barn inte påverkas - de får sin pott från default-inställningen.
-UPDATE children SET screen_budget_minutes = 600
-WHERE screen_budget_minutes IS NULL AND created_at < '2026-07-13';
+-- Skärmtidskategorier: dagsbudget per barn och kategori (game/video/social/learning).
+-- Ersätter den gamla veckopotten children.screen_budget_minutes (kolumnen lämnas kvar oanvänd).
+CREATE TABLE IF NOT EXISTS child_screen_budgets (
+    child_id      INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    category      VARCHAR(10) NOT NULL,
+    daily_minutes INTEGER NOT NULL,
+    PRIMARY KEY (child_id, category)
+);
+
+ALTER TABLE screen_logs ADD COLUMN IF NOT EXISTS category VARCHAR(10) DEFAULT 'game' NOT NULL;
+ALTER TABLE screen_logs DROP CONSTRAINT IF EXISTS screen_logs_child_id_log_date_key;
+DO $$ BEGIN
+    ALTER TABLE screen_logs ADD CONSTRAINT screen_logs_child_date_cat UNIQUE (child_id, log_date, category);
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+INSERT INTO app_settings (key, value) VALUES
+    ('default_screen_game',     '90'),
+    ('default_screen_video',    '60'),
+    ('default_screen_social',   '15'),
+    ('default_screen_learning', '60')
+ON CONFLICT (key) DO NOTHING;
+
+-- Engångs (2026-07-12): befintliga barn får startbudgetar per kategori
+-- (flaggan mig_screen_cats_done gör att detta bara körs en gång)
+INSERT INTO child_screen_budgets (child_id, category, daily_minutes)
+SELECT c.id, v.cat, v.dm FROM children c
+CROSS JOIN (VALUES ('game', 90), ('video', 60), ('social', 15), ('learning', 60)) AS v(cat, dm)
+WHERE NOT EXISTS (SELECT 1 FROM app_settings WHERE key = 'mig_screen_cats_done')
+  AND NOT EXISTS (SELECT 1 FROM child_screen_budgets b WHERE b.child_id = c.id);
+
+INSERT INTO app_settings (key, value) VALUES ('mig_screen_cats_done', '1')
+ON CONFLICT (key) DO NOTHING;
 
 -- Förslagslådan: förbättringstips från användarna, läses på admin-sidan
 CREATE TABLE IF NOT EXISTS suggestions (

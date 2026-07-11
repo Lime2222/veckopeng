@@ -226,60 +226,71 @@ pageNav($user['name'], $child['id'], $isChildUser);
     <?php endif; ?>
   </div>
 
-  <!-- Screen time -->
+  <!-- Screen time (per kategori) -->
   <?php if (!empty($totals['screen_enabled'])):
-    $sPool = (int)$totals['screen_pool'];
-    $sUsed = (int)$totals['screen_used'];
-    $sLeft = $sPool - $sUsed;
-    $sPct  = $sPool > 0 ? min(100, round(100 * $sUsed / $sPool)) : 100;
-    $sBar  = $sUsed > $sPool ? 'bg-red-500' : ($sPct >= 80 ? 'bg-amber-400' : 'bg-purple-500');
-    $stmtST = db()->prepare('SELECT minutes FROM screen_logs WHERE child_id = ? AND log_date = ?');
-    $stmtST->execute([$child['id'], $selDate]);
-    $screenToday = (int)$stmtST->fetchColumn();
+    $screenTodayByCat = [];
+    try {
+        $stmtST = db()->prepare('SELECT category, minutes FROM screen_logs WHERE child_id = ? AND log_date = ?');
+        $stmtST->execute([$child['id'], $selDate]);
+        foreach ($stmtST->fetchAll() as $stRow) $screenTodayByCat[$stRow['category']] = (int)$stRow['minutes'];
+    } catch (Throwable $e) {}
+    $sAdj  = (int)$totals['screen_adj'];
+    $sOver = (int)$totals['screen_over'];
   ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
     <div class="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
       <h2 class="font-semibold text-gray-900">📱 Skärmtid</h2>
-      <span class="text-xs text-gray-400">
-        Pott: <?= formatMin($sPool) ?>/vecka
-        <?php if ((int)$totals['screen_adj'] !== 0): ?>
-        <span class="text-purple-500">(<?= $totals['screen_adj'] > 0 ? '+' : '' ?><?= (int)$totals['screen_adj'] ?> min bonus)</span>
-        <?php endif; ?>
-      </span>
-    </div>
-    <div class="px-4 py-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-semibold text-gray-700"><?= formatMin($sUsed) ?> använt</span>
-        <?php if ($sLeft >= 0): ?>
-        <span class="text-sm font-semibold text-green-600"><?= formatMin($sLeft) ?> kvar</span>
-        <?php else: ?>
-        <span class="text-sm font-semibold text-red-500">
-          <?= formatMin(-$sLeft) ?> över<?= !empty($totals['screen_fee']) ? ' → −' . formatKr($totals['screen_fee']) : '' ?>
-        </span>
-        <?php endif; ?>
-      </div>
-      <div class="bg-gray-100 rounded-full h-2 mb-3">
-        <div class="h-2 rounded-full transition-all <?= $sBar ?>" style="width:<?= $sPct ?>%"></div>
-      </div>
-      <?php if (!$reqLocked): ?>
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs text-gray-400 mr-1">Idag:</span>
-        <?php foreach ([15, 30, 60] as $m): ?>
-        <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', <?= $m ?>)"
-                class="flex-1 py-2.5 rounded-xl bg-purple-50 text-purple-700 text-sm font-bold hover:bg-purple-100 active:scale-95 transition-all">
-          +<?= $m ?>
-        </button>
-        <?php endforeach; ?>
-        <span class="text-sm font-bold text-gray-700 px-2 min-w-[52px] text-center" id="screen-today"><?= $screenToday ?> min</span>
-        <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', -15)"
-                class="px-3 py-2.5 rounded-xl bg-red-50 text-red-500 text-sm font-bold hover:bg-red-100 active:scale-95 transition-all">-15</button>
-      </div>
+      <?php if ($sOver > 0): ?>
+      <span class="text-xs font-semibold text-red-500"><?= formatMin($sOver) ?> över<?= !empty($totals['screen_fee']) ? ' → −' . formatKr($totals['screen_fee']) : '' ?></span>
+      <?php elseif ($sAdj !== 0): ?>
+      <span class="text-xs font-semibold text-purple-500">Bonuspott: <?= $sAdj > 0 ? '+' : '' ?><?= $sAdj ?> min</span>
       <?php else: ?>
-      <div class="flex items-center gap-2 opacity-50">
-        <span class="text-xs text-gray-400">Loggad skärmtid idag:</span>
-        <span class="text-sm font-bold text-gray-700"><?= $screenToday ?> min</span>
-      </div>
+      <span class="text-xs text-gray-400">per vecka, dagsbudget × 7</span>
       <?php endif; ?>
+    </div>
+    <div class="divide-y divide-gray-50">
+      <?php foreach ($totals['screen_cats'] as $cat => $sc):
+        [$catIcon, $catLabel] = SCREEN_CATS[$cat] ?? ['📱', $cat];
+        $pct   = $sc['pool'] > 0 ? min(100, round(100 * $sc['used'] / $sc['pool'])) : 100;
+        $bar   = $sc['used'] > $sc['pool'] ? 'bg-red-500' : ($pct >= 80 ? 'bg-amber-400' : 'bg-purple-500');
+        $left  = $sc['pool'] - $sc['used'];
+        $today = $screenTodayByCat[$cat] ?? 0;
+      ?>
+      <div class="px-4 py-3">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-sm font-semibold text-gray-800"><?= $catIcon ?> <?= $catLabel ?>
+            <span class="text-xs font-normal text-gray-400 ml-1"><?= $sc['daily'] ?> min/dag</span>
+          </span>
+          <?php if ($left >= 0): ?>
+          <span class="text-xs font-semibold text-green-600"><?= formatMin($left) ?> kvar</span>
+          <?php else: ?>
+          <span class="text-xs font-semibold text-red-500"><?= formatMin(-$left) ?> över</span>
+          <?php endif; ?>
+        </div>
+        <div class="bg-gray-100 rounded-full h-2 mb-2">
+          <div class="h-2 rounded-full transition-all <?= $bar ?>" style="width:<?= $pct ?>%"></div>
+        </div>
+        <?php if (!$reqLocked): ?>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-gray-400 mr-1">Idag:</span>
+          <?php foreach ([15, 30, 60] as $m): ?>
+          <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', '<?= $cat ?>', <?= $m ?>)"
+                  class="flex-1 py-2 rounded-xl bg-purple-50 text-purple-700 text-xs font-bold hover:bg-purple-100 active:scale-95 transition-all">
+            +<?= $m ?>
+          </button>
+          <?php endforeach; ?>
+          <span class="text-xs font-bold text-gray-700 px-1 min-w-[48px] text-center" id="screen-today-<?= $cat ?>"><?= $today ?> min</span>
+          <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', '<?= $cat ?>', -15)"
+                  class="px-2.5 py-2 rounded-xl bg-red-50 text-red-500 text-xs font-bold hover:bg-red-100 active:scale-95 transition-all">-15</button>
+        </div>
+        <?php else: ?>
+        <div class="flex items-center gap-2 opacity-50">
+          <span class="text-xs text-gray-400">Loggat idag:</span>
+          <span class="text-xs font-bold text-gray-700"><?= $today ?> min</span>
+        </div>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
     </div>
   </div>
   <?php endif; ?>
@@ -522,15 +533,15 @@ async function freeAdjustment(childId, date, sign) {
   await addAdjustment(childId, null, date, desc, sign * amount, unit);
 }
 
-async function logScreen(childId, date, delta) {
-  const todayEl = document.getElementById('screen-today');
+async function logScreen(childId, date, category, delta) {
+  const todayEl = document.getElementById('screen-today-' + category);
   const current = parseInt(todayEl.textContent) || 0;
   const newVal  = Math.max(0, current + delta);
 
   const r = await fetch('/api/log_screen_time.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
-    body: JSON.stringify({child_id: childId, date, minutes: newVal})
+    body: JSON.stringify({child_id: childId, date, category, minutes: newVal})
   }).then(r => r.json()).catch(() => ({error: 'Nätverksfel'}));
 
   if (r.error) { alert(r.error); return; }

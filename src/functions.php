@@ -168,6 +168,31 @@ function setSetting(string $key, string $value): void {
         ->execute([$key, $value]);
 }
 
+// Skärmtidskategorier: nyckel => [emoji, etikett]
+const SCREEN_CATS = [
+    'game'     => ['🎮', 'Speltid'],
+    'video'    => ['📺', 'TV & YouTube'],
+    'social'   => ['🤳', 'TikTok & Reels'],
+    'learning' => ['🧠', 'Lärospel & Pussel'],
+];
+
+// Barnets dagsbudgetar per kategori (bara kategorier med budget > 0)
+function getScreenBudgets(int $childId): array {
+    try {
+        $stmt = db()->prepare('SELECT category, daily_minutes FROM child_screen_budgets WHERE child_id = ?');
+        $stmt->execute([$childId]);
+        $out = [];
+        foreach ($stmt->fetchAll() as $b) {
+            if ((int)$b['daily_minutes'] > 0 && isset(SCREEN_CATS[$b['category']])) {
+                $out[$b['category']] = (int)$b['daily_minutes'];
+            }
+        }
+        return $out;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 function formatMin(int $m): string {
     $h = intdiv(abs($m), 60);
     $r = abs($m) % 60;
@@ -195,12 +220,13 @@ function getWeekTotals(int $childId, string $weekStart): array {
     $stmt->execute([$childId, $weekStart, $weekEnd]);
     $screenAdj = (int)round((float)$stmt->fetchColumn());
 
-    $stmt = db()->prepare('SELECT weekly_amount, screen_budget_minutes FROM children WHERE id = ?');
+    $stmt = db()->prepare('SELECT weekly_amount FROM children WHERE id = ?');
     $stmt->execute([$childId]);
-    $childRow = $stmt->fetch();
-    $base = (float)($childRow['weekly_amount'] ?? 0);
-    $screenBudget  = $childRow['screen_budget_minutes'];
-    $screenEnabled = $screenBudget !== null;
+    $base = (float)$stmt->fetchColumn();
+
+    // Skärmtid per kategori: veckopott = dagsbudget * 7
+    $screenBudgets = getScreenBudgets($childId);
+    $screenEnabled = !empty($screenBudgets);
 
     // Missade krav räknas först när tillfället passerat: en daglig bock är
     // missad när dagen är slut, vecko-/minutkrav när hela veckan är slut.
@@ -258,19 +284,40 @@ function getWeekTotals(int $childId, string $weekStart): array {
         $penalty = min($base, $penalty);
     }
 
-    // Skärmtid: använd tid mot veckans pott (pott = budget + minutjusteringar)
+    // Skärmtid: använd tid mot veckopott per kategori. Övertrassering summeras
+    // över kategorierna; minutbonusar/-avdrag är en gemensam pott som kvittar
+    // överdrag oavsett kategori.
     $screenUsed = 0;
     $screenPool = 0;
     $screenOver = 0;
     $screenFee  = 0.0;
+    $screenDetail = [];
     if ($screenEnabled) {
+        $usedByCat = [];
         try {
-            $s = db()->prepare('SELECT COALESCE(SUM(minutes),0) FROM screen_logs WHERE child_id = ? AND log_date BETWEEN ? AND ?');
+            $s = db()->prepare('SELECT category, COALESCE(SUM(minutes),0) AS m FROM screen_logs
+                                WHERE child_id = ? AND log_date BETWEEN ? AND ? GROUP BY category');
             $s->execute([$childId, $weekStart, $weekEnd]);
-            $screenUsed = (int)$s->fetchColumn();
+            foreach ($s->fetchAll() as $row) $usedByCat[$row['category']] = (int)$row['m'];
         } catch (Throwable $e) { /* tabellen saknas tills migrationen körts */ }
-        $screenPool = max(0, (int)$screenBudget + $screenAdj);
-        $screenOver = max(0, $screenUsed - $screenPool);
+
+        $catOverSum = 0;
+        foreach ($screenBudgets as $cat => $dailyMin) {
+            $pool = $dailyMin * 7;
+            $used = $usedByCat[$cat] ?? 0;
+            $over = max(0, $used - $pool);
+            $screenDetail[$cat] = [
+                'daily' => $dailyMin,
+                'pool'  => $pool,
+                'used'  => $used,
+                'over'  => $over,
+            ];
+            $screenPool += $pool;
+            $screenUsed += $used;
+            $catOverSum += $over;
+        }
+        // Bonusminuter kvittar överdrag (negativa minutjusteringar ökar det)
+        $screenOver = max(0, $catOverSum - $screenAdj);
         if ($screenOver > 0 && $cfg['screen_fee'] > 0) {
             // kr per påbörjad 10-minutersperiod över potten
             $screenFee = ceil($screenOver / 10) * $cfg['screen_fee'];
@@ -284,7 +331,7 @@ function getWeekTotals(int $childId, string $weekStart): array {
         'missed'         => $missed,
         'policy'         => $cfg['policy'],
         'screen_enabled' => $screenEnabled,
-        'screen_budget'  => $screenEnabled ? (int)$screenBudget : 0,
+        'screen_cats'    => $screenDetail,
         'screen_adj'     => $screenAdj,
         'screen_pool'    => $screenPool,
         'screen_used'    => $screenUsed,

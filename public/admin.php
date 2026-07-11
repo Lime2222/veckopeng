@@ -18,9 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action']) && ve
     $aact = $_POST['admin_action'];
     if ($aact === 'save_defaults') {
         $wa = trim($_POST['default_weekly_amount'] ?? '50');
-        $sb = trim($_POST['default_screen_budget'] ?? '');
         setSetting('default_weekly_amount', (string)max(0, (float)str_replace(',', '.', $wa)));
-        setSetting('default_screen_budget', ($sb !== '' && (int)$sb > 0) ? (string)(int)$sb : '');
+        $cats = $_POST['default_screen'] ?? [];
+        foreach (SCREEN_CATS as $catKey => $_lbl) {
+            $v = trim((string)($cats[$catKey] ?? ''));
+            setSetting('default_screen_' . $catKey, ($v !== '' && (int)$v > 0) ? (string)(int)$v : '');
+        }
     } elseif ($aact === 'add_def_dt') {
         $n = trim($_POST['name'] ?? '');
         $a = (float)str_replace(',', '.', $_POST['amount'] ?? '0');
@@ -157,7 +160,10 @@ $failedTop = db()->query("
 
 // ── Standard för nya konton ─────────────────────────────────────────────────
 $defWeekly = getSetting('default_weekly_amount', '50');
-$defScreen = getSetting('default_screen_budget', '');
+$defScreenCats = [];
+foreach (SCREEN_CATS as $catKey => $_lbl) {
+    $defScreenCats[$catKey] = getSetting('default_screen_' . $catKey, '');
+}
 $defReqs = [];
 $defDts  = [];
 try { $defReqs = db()->query('SELECT * FROM default_requirements ORDER BY id')->fetchAll(); } catch (Throwable $e) {}
@@ -233,13 +239,16 @@ pageNav($user['name']);
             <input type="number" name="default_weekly_amount" value="<?= htmlspecialchars($defWeekly) ?>" min="0" step="0.5"
                    class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           </div>
+          <?php foreach (SCREEN_CATS as $catKey => [$catIcon, $catLabel]): ?>
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Skärmtidspott (min/vecka, tomt = av)</label>
-            <input type="number" name="default_screen_budget" value="<?= htmlspecialchars($defScreen ?? '') ?>" min="0" step="5"
-                   class="w-36 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <label class="block text-xs font-medium text-gray-500 mb-1"><?= $catIcon ?> <?= $catLabel ?> (min/dag)</label>
+            <input type="number" name="default_screen[<?= $catKey ?>]" value="<?= htmlspecialchars($defScreenCats[$catKey] ?? '') ?>" min="0" step="5"
+                   class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           </div>
+          <?php endforeach; ?>
           <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">Spara</button>
         </form>
+        <p class="text-xs text-gray-400 mt-2">Skärmtid: tomt = kategorin av för nya barn. Veckopotten per kategori = dagsbudget × 7.</p>
       </div>
 
       <!-- Default-krav -->
