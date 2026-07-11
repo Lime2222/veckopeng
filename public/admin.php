@@ -34,25 +34,71 @@ $users = db()->query("
     ORDER BY u.created_at DESC
 ")->fetchAll();
 
-// ── Familjer (barn + medlemmar) ─────────────────────────────────────────────
+// ── Familjer: barn som delar medlemmar grupperas ihop till en familj ────────
 $children = db()->query("
-    SELECT c.id, c.name, c.weekly_amount, c.created_at,
+    SELECT c.id, c.name, c.avatar_color, c.weekly_amount, c.created_at,
            u.name AS owner_name, u.email AS owner_email
     FROM children c
     JOIN users u ON u.id = c.user_id
     ORDER BY u.email, c.name
 ")->fetchAll();
 
-$membersByChild = [];
-$mstmt = db()->query("
-    SELECT fm.child_id, u.name, u.email, fm.role
+$links = db()->query("
+    SELECT fm.child_id, fm.user_id, fm.role, u.name, u.email
     FROM family_members fm
     JOIN users u ON u.id = fm.user_id
-    ORDER BY fm.role DESC, u.name
-");
-foreach ($mstmt->fetchAll() as $m) {
-    $membersByChild[$m['child_id']][] = $m;
+")->fetchAll();
+
+// Union-find: varje barn och användare är en nod, medlemskap är kanter.
+// Sammanhängande grupper = en familj, oavsett vem som äger vilket barn.
+$uf = [];
+$find = function (string $x) use (&$uf, &$find): string {
+    if (!isset($uf[$x])) $uf[$x] = $x;
+    if ($uf[$x] !== $x) $uf[$x] = $find($uf[$x]);
+    return $uf[$x];
+};
+foreach ($links as $l) {
+    $ra = $find('c' . $l['child_id']);
+    $rb = $find('u' . $l['user_id']);
+    if ($ra !== $rb) $uf[$ra] = $rb;
 }
+
+$childName = [];
+foreach ($children as $c) $childName[$c['id']] = $c['name'];
+
+$families = [];
+foreach ($children as $c) {
+    $families[$find('c' . $c['id'])]['children'][] = $c;
+}
+foreach ($links as $l) {
+    $root = $find('c' . $l['child_id']);
+    if (!isset($families[$root])) continue;
+    $m = &$families[$root]['members'][$l['user_id']];
+    $m['name']    = $l['name'];
+    $m['email']   = $l['email'];
+    $m['roles'][] = ['role' => $l['role'], 'child' => $childName[$l['child_id']] ?? '?'];
+    unset($m);
+}
+
+// Vuxna först i medlemslistan, ägare överst
+$roleOrder = ['owner' => 0, 'parent' => 1, 'child' => 2];
+foreach ($families as &$fam) {
+    $fam['members'] = $fam['members'] ?? [];
+    foreach ($fam['members'] as &$m) {
+        usort($m['roles'], fn($a, $b) => ($roleOrder[$a['role']] ?? 9) <=> ($roleOrder[$b['role']] ?? 9));
+    }
+    unset($m);
+    uasort($fam['members'], fn($a, $b) =>
+        ($roleOrder[$a['roles'][0]['role']] ?? 9) <=> ($roleOrder[$b['roles'][0]['role']] ?? 9)
+            ?: strcasecmp($a['name'], $b['name']));
+    // Familjens namn: de vuxna medlemmarna
+    $adults = array_filter($fam['members'], fn($m) => in_array($m['roles'][0]['role'], ['owner', 'parent'], true));
+    $fam['label'] = $adults ? implode(' & ', array_column($adults, 'name')) : 'Familj';
+}
+unset($fam);
+
+// Största familjen överst
+uasort($families, fn($a, $b) => count($b['children']) <=> count($a['children']));
 
 // ── Inloggningsförsök ───────────────────────────────────────────────────────
 $attempts = db()->query("
@@ -151,27 +197,36 @@ pageNav($user['name']);
   <section>
     <h2 class="font-bold text-gray-900 text-lg mb-3">👨‍👩‍👧 Familjer</h2>
     <div class="space-y-3">
-      <?php foreach ($children as $c): ?>
+      <?php foreach ($families as $fam): ?>
       <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <span class="font-bold text-gray-900"><?= htmlspecialchars($c['name']) ?></span>
-            <span class="text-sm text-gray-500 ml-2"><?= number_format((float)$c['weekly_amount'], 0, ',', ' ') ?> kr/vecka</span>
-          </div>
-          <span class="text-xs text-gray-400">Skapad <?= fmtTs($c['created_at']) ?></span>
+          <span class="font-bold text-gray-900">👨‍👩‍👧 <?= htmlspecialchars($fam['label']) ?></span>
+          <span class="text-xs text-gray-400"><?= count($fam['children']) ?> barn · <?= count($fam['members']) ?> medlemmar</span>
         </div>
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <?php foreach ($membersByChild[$c['id']] ?? [] as $m):
-            [$roleLabel, $roleClass] = ROLE_LABELS[$m['role']] ?? [$m['role'], 'bg-gray-100 text-gray-700']; ?>
-          <span class="text-xs px-2 py-1 rounded-full <?= $roleClass ?>">
-            <?= htmlspecialchars($m['name']) ?> · <?= $roleLabel ?>
-            <span class="opacity-60">(<?= htmlspecialchars($m['email']) ?>)</span>
+
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          <?php foreach ($fam['children'] as $c): ?>
+          <span class="text-xs px-2 py-1 rounded-full text-white font-semibold" style="background-color:<?= htmlspecialchars($c['avatar_color'] ?: '#6366f1') ?>">
+            👶 <?= htmlspecialchars($c['name']) ?> · <?= number_format((float)$c['weekly_amount'], 0, ',', ' ') ?> kr/v
           </span>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="mt-3 space-y-1.5">
+          <?php foreach ($fam['members'] as $m): ?>
+          <div class="text-sm flex items-center flex-wrap gap-1.5">
+            <span class="font-medium text-gray-800"><?= htmlspecialchars($m['name']) ?></span>
+            <span class="text-xs text-gray-400"><?= htmlspecialchars($m['email']) ?></span>
+            <?php foreach ($m['roles'] as $r):
+              [$roleLabel, $roleClass] = ROLE_LABELS[$r['role']] ?? [$r['role'], 'bg-gray-100 text-gray-700']; ?>
+            <span class="text-xs px-2 py-0.5 rounded-full <?= $roleClass ?>"><?= $roleLabel ?> · <?= htmlspecialchars($r['child']) ?></span>
+            <?php endforeach; ?>
+          </div>
           <?php endforeach; ?>
         </div>
       </div>
       <?php endforeach; ?>
-      <?php if (empty($children)): ?>
+      <?php if (empty($families)): ?>
       <p class="text-gray-400 text-sm">Inga barnprofiler ännu.</p>
       <?php endif; ?>
     </div>
