@@ -5,7 +5,8 @@ function pageHead(string $title): void { ?>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= htmlspecialchars($title) ?> – Veckopeng</title>
+<title><?= htmlspecialchars($title) ?> – Veckoswishen</title>
+<meta name="description" content="Hantera barnens veckopeng enkelt">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
 <style>
@@ -20,7 +21,7 @@ function pageNav(string $userName, int $childId = 0, bool $isChild = false): voi
 <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
   <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
     <a href="/dashboard.php" class="flex items-center gap-2 font-bold text-indigo-700 text-lg">
-      <span>🪙</span><span>Veckopeng</span>
+      <span>🪙</span><span>Veckoswishen</span>
     </a>
     <div class="flex items-center gap-3">
       <?php if ($childId && !$isChild): ?>
