@@ -25,7 +25,37 @@ $success = $_SESSION['flash_success'] ?? ''; unset($_SESSION['flash_success']);
 
 pageHead('Familjeinställningar');
 pageNav($user['name'], 0);
-?>
+
+function addChildForm(): void { ?>
+      <form action="/api/add_child.php" method="POST" class="space-y-4">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Barnets namn</label>
+          <input type="text" name="name" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Veckopeng (kr)</label>
+          <input type="number" name="weekly_amount" value="50" min="0" step="0.5" required
+                 class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Profilfärg</label>
+          <div class="flex gap-2 flex-wrap">
+            <?php foreach (['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4'] as $c): ?>
+            <label class="cursor-pointer">
+              <input type="radio" name="avatar_color" value="<?= $c ?>" class="sr-only" <?= $c === '#6366f1' ? 'checked' : '' ?>>
+              <span class="block w-9 h-9 rounded-full border-4 border-transparent hover:scale-110 transition-transform"
+                    style="background-color:<?= $c ?>"
+                    onclick="this.previousElementSibling.checked=true;document.querySelectorAll('[name=avatar_color]').forEach(r=>{r.nextElementSibling.style.borderColor=r.checked?'#9ca3af':'transparent'})"></span>
+            </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-base transition-colors">
+          Lägg till
+        </button>
+      </form>
+<?php } ?>
 <main class="max-w-lg mx-auto px-4 py-6">
   <div class="flex items-center gap-3 mb-6">
     <a href="/dashboard.php" class="p-2 rounded-xl text-gray-500 hover:bg-gray-100">
@@ -44,7 +74,7 @@ pageNav($user['name'], 0);
   <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><?= htmlspecialchars($success) ?></div>
   <?php endif; ?>
 
-  <!-- Child order -->
+  <!-- Child order + add child -->
   <?php if (count($children) > 1): ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
     <div class="px-5 py-4 border-b border-gray-50">
@@ -86,6 +116,26 @@ pageNav($user['name'], 0);
         </div>
       </div>
       <?php endforeach; ?>
+    </div>
+    <div x-data="{ open: false }" class="border-t border-gray-50">
+      <button @click="open=!open" class="w-full flex items-center justify-center gap-2 py-3.5 text-indigo-600 font-semibold text-sm hover:bg-indigo-50 transition-colors rounded-b-2xl">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Lägg till barn
+      </button>
+      <div x-show="open" x-cloak class="p-5 border-t border-gray-50">
+        <?php addChildForm(); ?>
+      </div>
+    </div>
+  </div>
+  <?php else: ?>
+  <div x-data="{ open: false }" class="mb-4">
+    <button @click="open=!open"
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Lägg till barn
+    </button>
+    <div x-show="open" x-cloak class="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <?php addChildForm(); ?>
     </div>
   </div>
   <?php endif; ?>
@@ -349,45 +399,5 @@ pageNav($user['name'], 0);
   </div>
 
   <?php endif; ?>
-
-  <!-- Add child (flyttad hit från startsidan - behövs sällan efter uppstarten) -->
-  <div x-data="{ open: false }" class="mb-6">
-    <button @click="open=!open"
-            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-      Lägg till barn
-    </button>
-
-    <div x-show="open" x-cloak class="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <form action="/api/add_child.php" method="POST" class="space-y-4">
-        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Barnets namn</label>
-          <input type="text" name="name" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Veckopeng (kr)</label>
-          <input type="number" name="weekly_amount" value="50" min="0" step="0.5" required
-                 class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Profilfärg</label>
-          <div class="flex gap-2 flex-wrap">
-            <?php foreach (['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4'] as $c): ?>
-            <label class="cursor-pointer">
-              <input type="radio" name="avatar_color" value="<?= $c ?>" class="sr-only" <?= $c === '#6366f1' ? 'checked' : '' ?>>
-              <span class="block w-9 h-9 rounded-full border-4 border-transparent hover:scale-110 transition-transform"
-                    style="background-color:<?= $c ?>"
-                    onclick="this.previousElementSibling.checked=true;document.querySelectorAll('[name=avatar_color]').forEach(r=>{r.nextElementSibling.style.borderColor=r.checked?'#9ca3af':'transparent'})"></span>
-            </label>
-            <?php endforeach; ?>
-          </div>
-        </div>
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-base transition-colors">
-          Lägg till
-        </button>
-      </form>
-    </div>
-  </div>
 </main>
 <?php pageFoot(); ?>
