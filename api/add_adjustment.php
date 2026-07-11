@@ -12,6 +12,7 @@ $typeId    = isset($body['deduction_type_id']) ? (int)$body['deduction_type_id']
 $amount    = (float)($body['amount'] ?? 0);
 $desc      = trim($body['description'] ?? '');
 $date      = $body['date'] ?? date('Y-m-d');
+$unit      = ($body['unit'] ?? 'kr') === 'min' ? 'min' : 'kr';
 
 if (!$childId || !$amount || !$desc) jsonOut(['error' => 'Ogiltiga parametrar'], 400);
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) jsonOut(['error' => 'Ogiltigt datum'], 400);
@@ -33,11 +34,11 @@ if ($typeId) {
 }
 
 $stmt = db()->prepare('
-    INSERT INTO adjustments (child_id, deduction_type_id, amount, description, log_date)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO adjustments (child_id, deduction_type_id, amount, description, log_date, unit)
+    VALUES (?, ?, ?, ?, ?, ?)
     RETURNING id
 ');
-$stmt->execute([$childId, $typeId, $amount, $desc, $date]);
+$stmt->execute([$childId, $typeId, $amount, $desc, $date, $unit]);
 $adjId = (int)$stmt->fetchColumn();
 
 $ws     = weekStart($date);

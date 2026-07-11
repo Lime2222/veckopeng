@@ -154,6 +154,26 @@ CREATE TABLE IF NOT EXISTS child_requirement_exclusions (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS req_policy  VARCHAR(10)   DEFAULT 'none' NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS req_penalty NUMERIC(10,2) DEFAULT 0 NOT NULL;
 
+-- Skärmtid som valuta:
+--   children.screen_budget_minutes: veckopott i minuter (NULL = skärmtid avstängd för barnet)
+--   users.screen_overage_fee: kr som dras per påbörjad 10 min över potten (familjeregel, 0 = gratis)
+--   adjustments/deduction_types.unit: 'kr' (pengar) eller 'min' (skärmtid, fyller på/minskar potten)
+--   screen_logs: använd skärmtid per barn och dag
+ALTER TABLE children ADD COLUMN IF NOT EXISTS screen_budget_minutes INTEGER;
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS screen_overage_fee NUMERIC(10,2) DEFAULT 0 NOT NULL;
+ALTER TABLE adjustments     ADD COLUMN IF NOT EXISTS unit VARCHAR(3) DEFAULT 'kr' NOT NULL;
+ALTER TABLE deduction_types ADD COLUMN IF NOT EXISTS unit VARCHAR(3) DEFAULT 'kr' NOT NULL;
+
+CREATE TABLE IF NOT EXISTS screen_logs (
+    id       SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    log_date DATE NOT NULL,
+    minutes  INTEGER DEFAULT 0 NOT NULL,
+    UNIQUE (child_id, log_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_screen_logs_child_date ON screen_logs(child_id, log_date);
+
 -- Förslagslådan: förbättringstips från användarna, läses på admin-sidan
 CREATE TABLE IF NOT EXISTS suggestions (
     id         SERIAL PRIMARY KEY,

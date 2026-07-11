@@ -6,9 +6,11 @@ $user = requireAuth();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /family.php'); exit; }
 if (!verifyCsrf()) { $_SESSION['flash_error'] = 'Sessionsfel.'; header('Location: /family.php'); exit; }
 
-$childId = (int)($_POST['child_id'] ?? 0);
-$policy  = $_POST['policy'] ?? 'none';
-$penalty = (float)str_replace(',', '.', $_POST['penalty'] ?? '0');
+$childId   = (int)($_POST['child_id'] ?? 0);
+$policy    = $_POST['policy'] ?? 'none';
+$penalty   = (float)str_replace(',', '.', $_POST['penalty'] ?? '0');
+$screenFee = (float)str_replace(',', '.', $_POST['screen_fee'] ?? '0');
+if ($screenFee < 0) $screenFee = 0;
 
 if (!in_array($policy, ['none', 'all', 'percent', 'fixed'], true)) $policy = 'none';
 if ($penalty < 0) $penalty = 0;
@@ -26,8 +28,8 @@ if ($child['role'] === 'child') {
     header('Location: /family.php'); exit;
 }
 
-db()->prepare('UPDATE users SET req_policy = ?, req_penalty = ? WHERE id = ?')
-    ->execute([$policy, $penalty, (int)$child['user_id']]);
+db()->prepare('UPDATE users SET req_policy = ?, req_penalty = ?, screen_overage_fee = ? WHERE id = ?')
+    ->execute([$policy, $penalty, $screenFee, (int)$child['user_id']]);
 
 $_SESSION['flash_success'] = 'Veckopengsreglerna är sparade.';
 header('Location: /family.php');

@@ -137,33 +137,53 @@ function getWeekAdjustments(int $childId, string $weekStart): array {
 
 function getFamilyPolicy(int $childId): array {
     try {
-        $stmt = db()->prepare('SELECT req_policy, req_penalty FROM users WHERE id = (SELECT user_id FROM children WHERE id = ?)');
+        $stmt = db()->prepare('SELECT req_policy, req_penalty, screen_overage_fee FROM users WHERE id = (SELECT user_id FROM children WHERE id = ?)');
         $stmt->execute([$childId]);
         $row = $stmt->fetch();
         return [
-            'policy'  => $row['req_policy'] ?? 'none',
-            'penalty' => (float)($row['req_penalty'] ?? 0),
+            'policy'     => $row['req_policy'] ?? 'none',
+            'penalty'    => (float)($row['req_penalty'] ?? 0),
+            'screen_fee' => (float)($row['screen_overage_fee'] ?? 0),
         ];
     } catch (Throwable $e) {
         // Kolumnerna saknas tills migrationen körts - bete dig som tidigare
-        return ['policy' => 'none', 'penalty' => 0.0];
+        return ['policy' => 'none', 'penalty' => 0.0, 'screen_fee' => 0.0];
     }
+}
+
+function formatMin(int $m): string {
+    $h = intdiv(abs($m), 60);
+    $r = abs($m) % 60;
+    $s = $h > 0 ? ($h . ' h' . ($r ? ' ' . $r . ' min' : '')) : ($r . ' min');
+    return ($m < 0 ? '−' : '') . $s;
 }
 
 function getWeekTotals(int $childId, string $weekStart): array {
     $weekEnd = (new DateTime($weekStart))->modify('+6 days')->format('Y-m-d');
 
-    $stmt = db()->prepare('
+    $stmt = db()->prepare("
         SELECT COALESCE(SUM(amount), 0) AS total
         FROM adjustments
-        WHERE child_id = ? AND log_date BETWEEN ? AND ?
-    ');
+        WHERE child_id = ? AND log_date BETWEEN ? AND ? AND unit = 'kr'
+    ");
     $stmt->execute([$childId, $weekStart, $weekEnd]);
     $adj = (float)$stmt->fetchColumn();
 
-    $stmt = db()->prepare('SELECT weekly_amount FROM children WHERE id = ?');
+    // Skärmtidsjusteringar (bonus/avdrag i minuter) påverkar veckans pott
+    $stmt = db()->prepare("
+        SELECT COALESCE(SUM(amount), 0)
+        FROM adjustments
+        WHERE child_id = ? AND log_date BETWEEN ? AND ? AND unit = 'min'
+    ");
+    $stmt->execute([$childId, $weekStart, $weekEnd]);
+    $screenAdj = (int)round((float)$stmt->fetchColumn());
+
+    $stmt = db()->prepare('SELECT weekly_amount, screen_budget_minutes FROM children WHERE id = ?');
     $stmt->execute([$childId]);
-    $base = (float)$stmt->fetchColumn();
+    $childRow = $stmt->fetch();
+    $base = (float)($childRow['weekly_amount'] ?? 0);
+    $screenBudget  = $childRow['screen_budget_minutes'];
+    $screenEnabled = $screenBudget !== null;
 
     // Missade krav räknas först när tillfället passerat: en daglig bock är
     // missad när dagen är slut, vecko-/minutkrav när hela veckan är slut.
@@ -221,15 +241,41 @@ function getWeekTotals(int $childId, string $weekStart): array {
         $penalty = min($base, $penalty);
     }
 
+    // Skärmtid: använd tid mot veckans pott (pott = budget + minutjusteringar)
+    $screenUsed = 0;
+    $screenPool = 0;
+    $screenOver = 0;
+    $screenFee  = 0.0;
+    if ($screenEnabled) {
+        try {
+            $s = db()->prepare('SELECT COALESCE(SUM(minutes),0) FROM screen_logs WHERE child_id = ? AND log_date BETWEEN ? AND ?');
+            $s->execute([$childId, $weekStart, $weekEnd]);
+            $screenUsed = (int)$s->fetchColumn();
+        } catch (Throwable $e) { /* tabellen saknas tills migrationen körts */ }
+        $screenPool = max(0, (int)$screenBudget + $screenAdj);
+        $screenOver = max(0, $screenUsed - $screenPool);
+        if ($screenOver > 0 && $cfg['screen_fee'] > 0) {
+            // kr per påbörjad 10-minutersperiod över potten
+            $screenFee = ceil($screenOver / 10) * $cfg['screen_fee'];
+        }
+    }
+
     return [
-        'base'         => $base,
-        'adjustments'  => $adj,
-        'penalty'      => $penalty,
-        'missed'       => $missed,
-        'policy'       => $cfg['policy'],
-        'final'        => max(0, $base - $penalty + $adj),
-        'req_done'     => $completed,
-        'req_total'    => $total,
+        'base'           => $base,
+        'adjustments'    => $adj,
+        'penalty'        => $penalty,
+        'missed'         => $missed,
+        'policy'         => $cfg['policy'],
+        'screen_enabled' => $screenEnabled,
+        'screen_budget'  => $screenEnabled ? (int)$screenBudget : 0,
+        'screen_adj'     => $screenAdj,
+        'screen_pool'    => $screenPool,
+        'screen_used'    => $screenUsed,
+        'screen_over'    => $screenOver,
+        'screen_fee'     => $screenFee,
+        'final'          => max(0, $base - $penalty - $screenFee + $adj),
+        'req_done'       => $completed,
+        'req_total'      => $total,
     ];
 }
 

@@ -88,6 +88,9 @@ pageNav($user['name'], $child['id'], $isChildUser);
         <?php if (!empty($totals['penalty'])): ?>
         <p class="text-xs text-red-300">Missade krav: −<?= formatKr($totals['penalty']) ?></p>
         <?php endif; ?>
+        <?php if (!empty($totals['screen_fee'])): ?>
+        <p class="text-xs text-red-300">📱 Skärmtid över: −<?= formatKr($totals['screen_fee']) ?></p>
+        <?php endif; ?>
         <?php if ($totals['adjustments'] != 0): ?>
         <p class="text-xs <?= $totals['adjustments'] > 0 ? 'text-green-300' : 'text-red-300' ?>">
           <?= $totals['adjustments'] > 0 ? '+' : '' ?><?= formatKr($totals['adjustments']) ?>
@@ -223,6 +226,64 @@ pageNav($user['name'], $child['id'], $isChildUser);
     <?php endif; ?>
   </div>
 
+  <!-- Screen time -->
+  <?php if (!empty($totals['screen_enabled'])):
+    $sPool = (int)$totals['screen_pool'];
+    $sUsed = (int)$totals['screen_used'];
+    $sLeft = $sPool - $sUsed;
+    $sPct  = $sPool > 0 ? min(100, round(100 * $sUsed / $sPool)) : 100;
+    $sBar  = $sUsed > $sPool ? 'bg-red-500' : ($sPct >= 80 ? 'bg-amber-400' : 'bg-purple-500');
+    $stmtST = db()->prepare('SELECT minutes FROM screen_logs WHERE child_id = ? AND log_date = ?');
+    $stmtST->execute([$child['id'], $selDate]);
+    $screenToday = (int)$stmtST->fetchColumn();
+  ?>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+    <div class="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+      <h2 class="font-semibold text-gray-900">📱 Skärmtid</h2>
+      <span class="text-xs text-gray-400">
+        Pott: <?= formatMin($sPool) ?>/vecka
+        <?php if ((int)$totals['screen_adj'] !== 0): ?>
+        <span class="text-purple-500">(<?= $totals['screen_adj'] > 0 ? '+' : '' ?><?= (int)$totals['screen_adj'] ?> min bonus)</span>
+        <?php endif; ?>
+      </span>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold text-gray-700"><?= formatMin($sUsed) ?> använt</span>
+        <?php if ($sLeft >= 0): ?>
+        <span class="text-sm font-semibold text-green-600"><?= formatMin($sLeft) ?> kvar</span>
+        <?php else: ?>
+        <span class="text-sm font-semibold text-red-500">
+          <?= formatMin(-$sLeft) ?> över<?= !empty($totals['screen_fee']) ? ' → −' . formatKr($totals['screen_fee']) : '' ?>
+        </span>
+        <?php endif; ?>
+      </div>
+      <div class="bg-gray-100 rounded-full h-2 mb-3">
+        <div class="h-2 rounded-full transition-all <?= $sBar ?>" style="width:<?= $sPct ?>%"></div>
+      </div>
+      <?php if (!$reqLocked): ?>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-400 mr-1">Idag:</span>
+        <?php foreach ([15, 30, 60] as $m): ?>
+        <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', <?= $m ?>)"
+                class="flex-1 py-2.5 rounded-xl bg-purple-50 text-purple-700 text-sm font-bold hover:bg-purple-100 active:scale-95 transition-all">
+          +<?= $m ?>
+        </button>
+        <?php endforeach; ?>
+        <span class="text-sm font-bold text-gray-700 px-2 min-w-[52px] text-center" id="screen-today"><?= $screenToday ?> min</span>
+        <button onclick="logScreen(<?= $child['id'] ?>, '<?= $selDate ?>', -15)"
+                class="px-3 py-2.5 rounded-xl bg-red-50 text-red-500 text-sm font-bold hover:bg-red-100 active:scale-95 transition-all">-15</button>
+      </div>
+      <?php else: ?>
+      <div class="flex items-center gap-2 opacity-50">
+        <span class="text-xs text-gray-400">Loggad skärmtid idag:</span>
+        <span class="text-sm font-bold text-gray-700"><?= $screenToday ?> min</span>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- Quick adjustments -->
   <?php if (!$isLocked && (!$isChildUser || $canSelfAdjust) && !empty($deductTypes)): ?>
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
@@ -231,11 +292,21 @@ pageNav($user['name'], $child['id'], $isChildUser);
       <p class="text-xs text-gray-400 mt-0.5">Avdrag &amp; bonus för <?= date('j/n', strtotime($selDate)) ?></p>
     </div>
     <div class="p-4 grid grid-cols-2 gap-2">
-      <?php foreach ($deductTypes as $dt): ?>
+      <?php foreach ($deductTypes as $dt):
+        $dtUnit = $dt['unit'] ?? 'kr';
+        if ($dtUnit === 'min' && empty($totals['screen_enabled'])) continue;
+        if ($dtUnit === 'min') {
+            $btnCls = 'bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100';
+            $btnAmt = ($dt['amount'] > 0 ? '+' : '') . (int)$dt['amount'] . ' min';
+        } else {
+            $btnCls = $dt['amount'] < 0 ? 'bg-red-50 border-red-100 text-red-700 hover:bg-red-100' : 'bg-green-50 border-green-100 text-green-700 hover:bg-green-100';
+            $btnAmt = ($dt['amount'] > 0 ? '+' : '') . formatKr((float)$dt['amount']);
+        }
+      ?>
       <button
-        onclick="addAdjustment(<?= $child['id'] ?>, <?= $dt['id'] ?>, '<?= addslashes($selDate) ?>', '<?= htmlspecialchars(addslashes($dt['name'])) ?>', <?= $dt['amount'] ?>)"
-        class="touch-btn flex flex-col items-center justify-center rounded-xl px-3 py-3 font-semibold text-sm transition-colors border <?= $dt['amount'] < 0 ? 'bg-red-50 border-red-100 text-red-700 hover:bg-red-100' : 'bg-green-50 border-green-100 text-green-700 hover:bg-green-100' ?>">
-        <span class="text-base font-bold"><?= $dt['amount'] > 0 ? '+' : '' ?><?= formatKr((float)$dt['amount']) ?></span>
+        onclick="addAdjustment(<?= $child['id'] ?>, <?= $dt['id'] ?>, '<?= addslashes($selDate) ?>', '<?= htmlspecialchars(addslashes($dt['name'])) ?>', <?= $dt['amount'] ?>, '<?= $dtUnit ?>')"
+        class="touch-btn flex flex-col items-center justify-center rounded-xl px-3 py-3 font-semibold text-sm transition-colors border <?= $btnCls ?>">
+        <span class="text-base font-bold"><?= $btnAmt ?></span>
         <span class="text-xs mt-0.5 text-center leading-tight"><?= htmlspecialchars($dt['name']) ?></span>
       </button>
       <?php endforeach; ?>
@@ -252,8 +323,14 @@ pageNav($user['name'], $child['id'], $isChildUser);
     </div>
     <div class="p-4 space-y-2">
       <div class="flex gap-2">
-        <input type="number" id="free-amount" min="0" step="0.5" placeholder="Kr" inputmode="decimal"
-               class="w-24 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <input type="number" id="free-amount" min="0" step="0.5" placeholder="Antal" inputmode="decimal"
+               class="w-20 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <?php if (!empty($totals['screen_enabled'])): ?>
+        <select id="free-unit" class="px-2 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <option value="kr">kr</option>
+          <option value="min">min 📱</option>
+        </select>
+        <?php endif; ?>
         <input type="text" id="free-desc" placeholder="Vad hände? t.ex. Hjälpte mormor" maxlength="200"
                class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-0">
       </div>
@@ -281,10 +358,11 @@ pageNav($user['name'], $child['id'], $isChildUser);
       <?php foreach ($weekAdj as $a):
         $amt = (float)$a['amount'];
         $d   = (int)date('N', strtotime($a['log_date'])) - 1;
+        $aUnit = $a['unit'] ?? 'kr';
       ?>
       <div class="flex items-center gap-3 px-4 py-3 adj-row" id="adj-<?= $a['id'] ?>">
-        <span class="text-sm font-bold <?= $amt >= 0 ? 'text-green-600' : 'text-red-500' ?> w-16 text-right flex-shrink-0">
-          <?= $amt > 0 ? '+' : '' ?><?= formatKr($amt) ?>
+        <span class="text-sm font-bold <?= $aUnit === 'min' ? 'text-purple-600' : ($amt >= 0 ? 'text-green-600' : 'text-red-500') ?> w-16 text-right flex-shrink-0">
+          <?= $amt > 0 ? '+' : '' ?><?= $aUnit === 'min' ? (int)$amt . ' min' : formatKr($amt) ?>
         </span>
         <div class="flex-1 min-w-0">
           <p class="text-sm text-gray-800 font-medium truncate"><?= htmlspecialchars($a['description']) ?></p>
@@ -326,7 +404,7 @@ pageNav($user['name'], $child['id'], $isChildUser);
       <div class="space-y-2 text-sm mb-4">
         <div class="flex justify-between"><span class="text-gray-500">Bas veckopeng</span><span class="font-medium"><?= formatKr($summary['base_amount']) ?></span></div>
         <?php if ($sumPenalty > 0): ?>
-        <div class="flex justify-between"><span class="text-gray-500">Missade krav</span><span class="font-medium text-red-500">−<?= formatKr($sumPenalty) ?></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Avdrag krav &amp; skärmtid</span><span class="font-medium text-red-500">−<?= formatKr($sumPenalty) ?></span></div>
         <?php endif; ?>
         <div class="flex justify-between"><span class="text-gray-500">Avdrag / Bonus</span>
           <span class="font-medium <?= $summary['total_adjustments'] >= 0 ? 'text-green-600' : 'text-red-500' ?>">
@@ -421,11 +499,11 @@ document.querySelectorAll('.req-row').forEach(row => {
   });
 });
 
-async function addAdjustment(childId, typeId, date, desc, amount) {
+async function addAdjustment(childId, typeId, date, desc, amount, unit = 'kr') {
   const r = await fetch('/api/add_adjustment.php', {
     method: 'POST',
     headers: {'Content-Type':'application/json','X-CSRF-Token': CSRF},
-    body: JSON.stringify({child_id:childId, deduction_type_id:typeId, date, description:desc, amount})
+    body: JSON.stringify({child_id:childId, deduction_type_id:typeId, date, description:desc, amount, unit})
   }).then(r=>r.json()).catch(()=>({error:'Nätverksfel'}));
   if (r.error) { alert(r.error); return; }
   location.reload();
@@ -435,11 +513,28 @@ async function addAdjustment(childId, typeId, date, desc, amount) {
 async function freeAdjustment(childId, date, sign) {
   const amtEl  = document.getElementById('free-amount');
   const descEl = document.getElementById('free-desc');
+  const unitEl = document.getElementById('free-unit');
+  const unit   = unitEl ? unitEl.value : 'kr';
   const amount = Math.abs(parseFloat((amtEl.value || '').replace(',', '.')));
   const desc   = descEl.value.trim();
-  if (!amount || isNaN(amount)) { alert('Fyll i ett belopp i kronor.'); amtEl.focus(); return; }
+  if (!amount || isNaN(amount)) { alert(unit === 'min' ? 'Fyll i antal minuter.' : 'Fyll i ett belopp i kronor.'); amtEl.focus(); return; }
   if (!desc) { alert('Skriv vad som hände.'); descEl.focus(); return; }
-  await addAdjustment(childId, null, date, desc, sign * amount);
+  await addAdjustment(childId, null, date, desc, sign * amount, unit);
+}
+
+async function logScreen(childId, date, delta) {
+  const todayEl = document.getElementById('screen-today');
+  const current = parseInt(todayEl.textContent) || 0;
+  const newVal  = Math.max(0, current + delta);
+
+  const r = await fetch('/api/log_screen_time.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+    body: JSON.stringify({child_id: childId, date, minutes: newVal})
+  }).then(r => r.json()).catch(() => ({error: 'Nätverksfel'}));
+
+  if (r.error) { alert(r.error); return; }
+  location.reload();
 }
 
 async function deleteAdjustment(adjId, childId) {

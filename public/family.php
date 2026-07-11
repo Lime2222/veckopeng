@@ -321,6 +321,19 @@ function addChildForm(): void { ?>
         bli mer än basen. Bonusar och avdrag från knapparna påverkas inte.
       </p>
 
+      <div class="border-t border-gray-100 pt-4 mt-4">
+        <p class="text-sm font-semibold text-gray-800 mb-1">📱 Skärmtid över potten</p>
+        <div class="flex items-center gap-2">
+          <input type="number" name="screen_fee" value="<?= $policyCfg['screen_fee'] > 0 ? htmlspecialchars(rtrim(rtrim(number_format($policyCfg['screen_fee'], 2, '.', ''), '0'), '.')) : '' ?>"
+                 min="0" step="0.5" placeholder="0"
+                 class="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <span class="text-sm text-gray-500">kr per påbörjad 10 min över skärmtidspotten</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">
+          Gäller barn som har en skärmtidspott (sätts i barnets inställningar). 0 eller tomt = ingen kostnad.
+        </p>
+      </div>
+
       <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors">Spara regler</button>
     </form>
   </div>
@@ -332,13 +345,13 @@ function addChildForm(): void { ?>
       <p class="text-xs text-gray-400 mt-0.5">Negativt belopp = avdrag, positivt = bonus – gäller alla barn</p>
     </div>
     <div class="divide-y divide-gray-50">
-      <?php foreach ($deductTypes as $dt): $amt = (float)$dt['amount']; ?>
+      <?php foreach ($deductTypes as $dt): $amt = (float)$dt['amount']; $dtUnit = $dt['unit'] ?? 'kr'; ?>
       <div x-data="{ editing: false }" class="px-5 py-3">
 
         <!-- Visningsläge -->
         <div x-show="!editing" class="flex items-center gap-2">
-          <span class="w-14 text-right font-bold text-sm flex-shrink-0 <?= $amt >= 0 ? 'text-green-600' : 'text-red-500' ?>">
-            <?= $amt > 0 ? '+' : '' ?><?= formatKr($amt) ?>
+          <span class="w-16 text-right font-bold text-sm flex-shrink-0 <?= $dtUnit === 'min' ? 'text-purple-600' : ($amt >= 0 ? 'text-green-600' : 'text-red-500') ?>">
+            <?= $amt > 0 ? '+' : '' ?><?= $dtUnit === 'min' ? (int)$amt . ' min' : formatKr($amt) ?>
           </span>
           <span class="flex-1 text-gray-800 text-sm truncate <?= !$dt['active'] ? 'line-through text-gray-400' : '' ?>"><?= htmlspecialchars($dt['name']) ?></span>
           <button @click="editing=true" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors" title="Redigera">
@@ -371,11 +384,15 @@ function addChildForm(): void { ?>
           <input type="hidden" name="deduction_type_id" value="<?= $dt['id'] ?>">
           <input type="hidden" name="child_id" value="<?= $refId ?>">
           <input type="hidden" name="redirect" value="/family.php">
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <input type="number" name="amount" value="<?= $amt ?>" step="0.5" required
                    class="w-24 px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <select name="unit" class="px-2 py-2 border border-indigo-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+              <option value="kr" <?= $dtUnit === 'kr' ? 'selected' : '' ?>>kr</option>
+              <option value="min" <?= $dtUnit === 'min' ? 'selected' : '' ?>>min skärmtid</option>
+            </select>
             <input type="text" name="name" value="<?= htmlspecialchars($dt['name']) ?>" required
-                   class="flex-1 px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                   class="flex-1 min-w-[120px] px-3 py-2 border border-indigo-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
             <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">Spara</button>
             <button type="button" @click="editing=false" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold transition-colors">Avbryt</button>
           </div>
@@ -388,13 +405,18 @@ function addChildForm(): void { ?>
       <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
       <input type="hidden" name="child_id" value="<?= $refId ?>">
       <input type="hidden" name="redirect" value="/family.php">
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <input type="number" name="amount" placeholder="-5 eller +10" step="0.5" required
                class="w-28 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <select name="unit" class="px-2 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <option value="kr">kr</option>
+          <option value="min">min skärmtid</option>
+        </select>
         <input type="text" name="name" placeholder="Ej dukat av tallrik" required
-               class="flex-1 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+               class="flex-1 min-w-[120px] px-3 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         <button type="submit" class="touch-btn px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors">+</button>
       </div>
+      <p class="text-xs text-gray-400">Knappar i "min skärmtid" fyller på (eller minskar) barnets skärmtidspott i stället för pengar.</p>
     </form>
   </div>
 

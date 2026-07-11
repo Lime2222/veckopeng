@@ -10,12 +10,13 @@ $childId = (int)($_POST['child_id'] ?? 0);
 $dtId    = (int)($_POST['deduction_type_id'] ?? 0);
 $name    = trim($_POST['name'] ?? '');
 $amount  = (float)($_POST['amount'] ?? 0);
+$unit    = ($_POST['unit'] ?? 'kr') === 'min' ? 'min' : 'kr';
 
 if (!$childId || !$dtId || !$name || $amount == 0) { $_SESSION['flash_error'] = 'Ogiltiga uppgifter.'; header("Location: /settings.php?id=$childId"); exit; }
 $child = requireChildOwnership($childId, $user['id']);
 $familyUserId = (int)$child['user_id'];
 
-db()->prepare('UPDATE deduction_types SET name = ?, amount = ? WHERE id = ? AND user_id = ?')->execute([$name, $amount, $dtId, $familyUserId]);
+db()->prepare('UPDATE deduction_types SET name = ?, amount = ?, unit = ? WHERE id = ? AND user_id = ?')->execute([$name, $amount, $unit, $dtId, $familyUserId]);
 $allowed = ['/family.php'];
 $redirect = in_array($_POST['redirect'] ?? '', $allowed) ? $_POST['redirect'] : "/settings.php?id=$childId";
 $_SESSION['flash_success'] = 'Avdrag/bonus uppdaterat.';

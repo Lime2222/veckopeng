@@ -68,6 +68,13 @@ pageNav($user['name'], 0);
                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
       </div>
       <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">📱 Skärmtidspott (min/vecka)</label>
+        <input type="number" name="screen_budget_minutes" value="<?= htmlspecialchars($child['screen_budget_minutes'] ?? '') ?>" min="0" step="5"
+               placeholder="t.ex. 600 = 10 timmar - lämna tomt för att stänga av"
+               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base">
+        <p class="text-xs text-gray-400 mt-1">Skärmtid loggas på barnets sida. Tid över potten kan kosta veckopeng (regel i Familjeinställningar), och bonusar i minuter fyller på potten.</p>
+      </div>
+      <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Profilfärg</label>
         <div class="flex gap-2 flex-wrap">
           <?php foreach (['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4'] as $c): ?>
