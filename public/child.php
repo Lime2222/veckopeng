@@ -38,10 +38,10 @@ pageNav($user['name'], $child['id'], $isChildUser);
 ?>
 <main class="max-w-lg mx-auto px-4 py-4" x-data="weekView()" x-init="init()">
 
-  <?php if (count($allChildren) > 1): ?>
-  <!-- Child switcher -->
-  <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
-    <?php foreach ($allChildren as $c): ?>
+  <?php if (!$isChildUser): ?>
+  <!-- Child switcher + settings -->
+  <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+    <?php if (count($allChildren) > 1): foreach ($allChildren as $c): ?>
     <?php $isActive = $c['id'] === $child['id']; ?>
     <a href="/child.php?id=<?= $c['id'] ?>"
        class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm transition-all <?= $isActive ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300' ?>"
@@ -52,7 +52,11 @@ pageNav($user['name'], $child['id'], $isChildUser);
       </span>
       <?= htmlspecialchars($c['name']) ?>
     </a>
-    <?php endforeach; ?>
+    <?php endforeach; endif; ?>
+    <a href="/settings.php?id=<?= $child['id'] ?>" title="Inställningar för <?= htmlspecialchars($child['name']) ?>"
+       class="ml-auto flex-shrink-0 p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-indigo-50 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
   </div>
   <?php endif; ?>
 
