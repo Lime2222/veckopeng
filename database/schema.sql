@@ -154,6 +154,15 @@ CREATE TABLE IF NOT EXISTS child_requirement_exclusions (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS req_policy  VARCHAR(10)   DEFAULT 'none' NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS req_penalty NUMERIC(10,2) DEFAULT 0 NOT NULL;
 
+-- Förslagslådan: förbättringstips från användarna, läses på admin-sidan
+CREATE TABLE IF NOT EXISTS suggestions (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    message    TEXT NOT NULL,
+    done       BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Login attempt log (admin page shows failures; pruned on successful logins)
 CREATE TABLE IF NOT EXISTS login_attempts (
     id         SERIAL PRIMARY KEY,

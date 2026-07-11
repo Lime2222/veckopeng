@@ -91,7 +91,8 @@ pageNav($user['name']);
   </div>
   <?php endif; ?>
 
-  <!-- Add child -->
+  <!-- Add child (visas bara tills första barnet finns - därefter i Familjeinställningar) -->
+  <?php if (empty($children)): ?>
   <div x-data="{ open: false }" class="mt-6">
     <button @click="open=!open"
             class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors">
@@ -126,6 +127,33 @@ pageNav($user['name']);
         </div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-base transition-colors">
           Lägg till
+        </button>
+      </form>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- Förslagslådan -->
+  <div x-data="{ open: false }" class="mt-6 mb-4">
+    <button @click="open=!open"
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 font-semibold hover:bg-amber-50 transition-colors">
+      <span class="text-lg">💡</span>
+      Förslagslådan
+    </button>
+
+    <div x-show="open" x-cloak class="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-900 mb-1">Har du en idé?</h2>
+      <p class="text-sm text-gray-500 mb-4">
+        Här kan du skicka in förbättringstips, önskemål om nya funktioner eller
+        berätta om något som strular. Alla förslag läses — stort som smått!
+      </p>
+      <form action="/api/add_suggestion.php" method="POST" class="space-y-3">
+        <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+        <textarea name="message" rows="4" required maxlength="5000"
+                  placeholder="Skriv ditt förslag här…"
+                  class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-transparent text-base resize-y"></textarea>
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl text-base transition-colors">
+          Skicka in förslag
         </button>
       </form>
     </div>

@@ -6,6 +6,13 @@ require_once dirname(__DIR__) . '/src/layout.php';
 
 $user = requireAdmin();
 
+// Bocka av/på ett förslag i Förslagslådan
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['suggestion_done']) && verifyCsrf()) {
+    db()->prepare('UPDATE suggestions SET done = NOT done WHERE id = ?')
+        ->execute([(int)$_POST['suggestion_done']]);
+    header('Location: /admin.php'); exit;
+}
+
 function fmtTs(?string $ts): string {
     if (!$ts) return '–';
     return date('Y-m-d H:i', strtotime($ts));
@@ -114,6 +121,14 @@ $failedTop = db()->query("
     LIMIT 10
 ")->fetchAll();
 
+// ── Förslagslådan ───────────────────────────────────────────────────────────
+$suggestions = db()->query("
+    SELECT s.id, s.message, s.done, s.created_at, u.name AS user_name, u.email AS user_email
+    FROM suggestions s
+    LEFT JOIN users u ON u.id = s.user_id
+    ORDER BY s.done ASC, s.created_at DESC
+")->fetchAll();
+
 // ── Väntande inbjudningar ───────────────────────────────────────────────────
 $invites = db()->query("
     SELECT i.created_at, i.expires_at, i.role, c.name AS child_name, u.name AS invited_by_name
@@ -158,6 +173,35 @@ pageNav($user['name']);
     </div>
     <?php endforeach; ?>
   </div>
+
+  <!-- Förslagslådan -->
+  <?php if ($suggestions): ?>
+  <section>
+    <h2 class="font-bold text-gray-900 text-lg mb-3">💡 Förslagslådan</h2>
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+      <?php foreach ($suggestions as $s): ?>
+      <div class="px-4 py-3 flex items-start gap-3 <?= $s['done'] ? 'opacity-50' : '' ?>">
+        <form method="POST" class="flex-shrink-0 mt-0.5">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+          <input type="hidden" name="suggestion_done" value="<?= (int)$s['id'] ?>">
+          <button type="submit" title="<?= $s['done'] ? 'Markera som ohanterad' : 'Markera som hanterad' ?>"
+                  class="w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors <?= $s['done'] ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-green-400' ?>">
+            <svg class="w-4 h-4 text-white <?= $s['done'] ? '' : 'opacity-0' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+          </button>
+        </form>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-gray-800 whitespace-pre-line <?= $s['done'] ? 'line-through' : '' ?>"><?= htmlspecialchars($s['message']) ?></p>
+          <p class="text-xs text-gray-400 mt-1">
+            <?= htmlspecialchars($s['user_name'] ?? 'Borttaget konto') ?>
+            <?php if (!empty($s['user_email'])): ?>· <?= htmlspecialchars($s['user_email']) ?><?php endif; ?>
+            · <?= fmtTs($s['created_at']) ?>
+          </p>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </section>
+  <?php endif; ?>
 
   <!-- Konton -->
   <section>
