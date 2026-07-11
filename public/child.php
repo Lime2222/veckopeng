@@ -105,7 +105,7 @@ pageNav($user['name'], $child['id'], $isChildUser);
   </div>
 
   <!-- Day selector -->
-  <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+  <div class="flex gap-1.5 mb-4 pb-1">
     <?php foreach ($dates as $i => $d):
       $isToday = $d === $today;
       $isSel   = $d === $selDate;
@@ -116,7 +116,7 @@ pageNav($user['name'], $child['id'], $isChildUser);
       }
     ?>
     <a href="?id=<?= $id ?>&week=<?= $ws ?>&date=<?= $d ?>"
-       class="flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl font-medium text-sm transition-all <?= $isSel ? 'bg-indigo-600 text-white shadow-md' : ($isToday ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-white text-gray-600 border border-gray-100') ?>">
+       class="flex-1 min-w-0 flex flex-col items-center py-2 rounded-xl font-medium text-sm transition-all <?= $isSel ? 'bg-indigo-600 text-white shadow-md' : ($isToday ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-white text-gray-600 border border-gray-100') ?>">
       <span class="text-xs <?= $isSel ? 'text-indigo-200' : 'text-gray-400' ?>"><?= SHORT_DAYS[$i] ?></span>
       <span><?= date('j', strtotime($d)) ?></span>
       <?php if ($hasLogs && !$isSel): ?><span class="w-1 h-1 rounded-full bg-green-400 mt-0.5"></span><?php endif; ?>
