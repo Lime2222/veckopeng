@@ -23,10 +23,12 @@ $stmt->execute([$email]);
 $user = $stmt->fetch();
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
+    logLoginAttempt($email, false);
     $_SESSION['auth_error'] = 'Fel e-post eller lösenord.';
     header('Location: /index.php'); exit;
 }
 
+logLoginAttempt($email, true);
 session_regenerate_id(true);
 $_SESSION['user_id']   = $user['id'];
 $_SESSION['user_name'] = $user['name'];

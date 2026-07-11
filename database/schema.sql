@@ -146,6 +146,19 @@ CREATE TABLE IF NOT EXISTS child_requirement_exclusions (
     PRIMARY KEY (child_id, requirement_id)
 );
 
+-- Login attempt log (admin page shows failures; pruned on successful logins)
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id         SERIAL PRIMARY KEY,
+    email      VARCHAR(255) NOT NULL,
+    ip         VARCHAR(45),
+    user_agent VARCHAR(255),
+    success    BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_created ON login_attempts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
+
 CREATE TABLE IF NOT EXISTS invitations (
     id         SERIAL PRIMARY KEY,
     child_id   INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
