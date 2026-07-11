@@ -32,6 +32,20 @@ function tryRememberLogin(): void {
     setcookie('remember_token', $token, time() + 30 * 86400, '/', '', $secure, true);
 }
 
+function logActivity(int $userId): void {
+    try {
+        $page = mb_substr(basename($_SERVER['SCRIPT_NAME'] ?? ''), 0, 100);
+        if ($page === '') return;
+        db()->prepare('INSERT INTO activity_log (user_id, page) VALUES (?, ?)')
+            ->execute([$userId, $page]);
+        if (random_int(1, 50) === 1) {
+            db()->exec("DELETE FROM activity_log WHERE created_at < NOW() - INTERVAL '90 days'");
+        }
+    } catch (Throwable $e) {
+        // Loggning får aldrig stoppa sidan (t.ex. innan migrationen körts)
+    }
+}
+
 function requireAuth(): array {
     startSession();
     if (empty($_SESSION['user_id'])) {
@@ -44,6 +58,7 @@ function requireAuth(): array {
         header('Location: /index.php');
         exit;
     }
+    logActivity((int)$_SESSION['user_id']);
     return ['id' => (int)$_SESSION['user_id'], 'name' => $_SESSION['user_name']];
 }
 
@@ -128,5 +143,6 @@ function requireApiAuth(): array {
     if (empty($_SESSION['user_id'])) {
         jsonOut(['error' => 'Ej inloggad'], 401);
     }
+    logActivity((int)$_SESSION['user_id']);
     return ['id' => (int)$_SESSION['user_id'], 'name' => $_SESSION['user_name']];
 }

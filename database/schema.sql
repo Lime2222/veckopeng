@@ -261,6 +261,17 @@ CREATE TABLE IF NOT EXISTS suggestions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Aktivitetslogg: sidvisningar och API-anrop per användare, visas på admin-sidan
+CREATE TABLE IF NOT EXISTS activity_log (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    page       VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id);
+
 -- Login attempt log (admin page shows failures; pruned on successful logins)
 CREATE TABLE IF NOT EXISTS login_attempts (
     id         SERIAL PRIMARY KEY,

@@ -169,6 +169,53 @@ $defDts  = [];
 try { $defReqs = db()->query('SELECT * FROM default_requirements ORDER BY id')->fetchAll(); } catch (Throwable $e) {}
 try { $defDts  = db()->query('SELECT * FROM default_deduction_types ORDER BY id')->fetchAll(); } catch (Throwable $e) {}
 
+// ── Aktivitet ───────────────────────────────────────────────────────────────
+$activitySummary = [];
+$activityRecent  = [];
+try {
+    $activitySummary = db()->query("
+        SELECT u.id, u.name, MAX(a.created_at) AS last_seen,
+               COUNT(*) FILTER (WHERE a.created_at > NOW() - INTERVAL '7 days') AS events_7d,
+               COUNT(*) FILTER (WHERE a.created_at > NOW() - INTERVAL '1 day')  AS events_1d
+        FROM activity_log a
+        JOIN users u ON u.id = a.user_id
+        GROUP BY u.id, u.name
+        ORDER BY last_seen DESC
+    ")->fetchAll();
+    $activityRecent = db()->query("
+        SELECT a.page, a.created_at, u.name
+        FROM activity_log a
+        LEFT JOIN users u ON u.id = a.user_id
+        ORDER BY a.created_at DESC
+        LIMIT 40
+    ")->fetchAll();
+} catch (Throwable $e) { /* tabellen saknas tills migrationen körts */ }
+
+// Begripliga namn på sidor/åtgärder i aktivitetsloggen
+const PAGE_LABELS = [
+    'dashboard.php'         => '🏠 Startsidan',
+    'child.php'             => '👶 Barnsida',
+    'family.php'            => '👨‍👩‍👧 Familjeinställningar',
+    'settings.php'          => '⚙️ Barninställningar',
+    'history.php'           => '📊 Veckohistorik',
+    'info.php'              => 'ℹ️ Info-sidan',
+    'admin.php'             => '🛡️ Admin',
+    'accept_invite.php'     => '✉️ Inbjudan',
+    'toggle_req.php'        => '✅ Bockade krav',
+    'log_minutes.php'       => '⏱️ Loggade minuter',
+    'log_screen_time.php'   => '📱 Loggade skärmtid',
+    'add_adjustment.php'    => '💸 Avdrag/bonus',
+    'delete_adjustment.php' => '🗑️ Tog bort händelse',
+    'generate_summary.php'  => '📋 Veckosammanställning',
+    'update_status.php'     => '✔️ Ändrade betalstatus',
+    'add_child.php'         => '➕ Lade till barn',
+    'update_child.php'      => '✏️ Ändrade barn',
+    'add_suggestion.php'    => '💡 Skickade förslag',
+];
+function pageLabel(string $page): string {
+    return PAGE_LABELS[$page] ?? '📄 ' . $page;
+}
+
 // ── Förslagslådan ───────────────────────────────────────────────────────────
 $suggestions = db()->query("
     SELECT s.id, s.message, s.done, s.created_at, u.name AS user_name, u.email AS user_email
@@ -358,6 +405,50 @@ pageNav($user['name']);
     </div>
   </section>
   <?php endif; ?>
+
+  <!-- Aktivitet -->
+  <section>
+    <h2 class="font-bold text-gray-900 text-lg mb-3">📈 Aktivitet</h2>
+    <div class="grid gap-3 sm:grid-cols-2">
+
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-50">
+          <h3 class="font-semibold text-gray-800 text-sm">Per användare</h3>
+        </div>
+        <div class="divide-y divide-gray-50">
+          <?php foreach ($activitySummary as $a): ?>
+          <div class="px-4 py-2.5 flex items-center gap-2 text-sm">
+            <span class="flex-1 font-medium text-gray-800 truncate"><?= htmlspecialchars($a['name']) ?></span>
+            <span class="text-xs text-gray-400 whitespace-nowrap"><?= (int)$a['events_1d'] ?> idag · <?= (int)$a['events_7d'] ?> / 7 dgr</span>
+            <span class="text-xs text-gray-500 whitespace-nowrap font-medium"><?= fmtTs($a['last_seen']) ?></span>
+          </div>
+          <?php endforeach; ?>
+          <?php if (!$activitySummary): ?>
+          <p class="px-4 py-4 text-xs text-gray-400">Ingen aktivitet loggad ännu — loggen börjar fyllas nu.</p>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-50">
+          <h3 class="font-semibold text-gray-800 text-sm">Senaste händelser</h3>
+        </div>
+        <div class="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+          <?php foreach ($activityRecent as $a): ?>
+          <div class="px-4 py-2 flex items-center gap-2 text-sm">
+            <span class="text-xs text-gray-400 whitespace-nowrap w-24 flex-shrink-0"><?= fmtTs($a['created_at']) ?></span>
+            <span class="font-medium text-gray-700 truncate w-20 flex-shrink-0"><?= htmlspecialchars($a['name'] ?? '?') ?></span>
+            <span class="text-gray-600 truncate"><?= pageLabel($a['page']) ?></span>
+          </div>
+          <?php endforeach; ?>
+          <?php if (!$activityRecent): ?>
+          <p class="px-4 py-4 text-xs text-gray-400">Inget att visa ännu.</p>
+          <?php endif; ?>
+        </div>
+      </div>
+
+    </div>
+  </section>
 
   <!-- Konton -->
   <section>
