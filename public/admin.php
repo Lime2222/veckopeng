@@ -46,6 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action']) && ve
         }
     } elseif ($aact === 'del_def_req') {
         db()->prepare('DELETE FROM default_requirements WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+    } elseif ($aact === 'set_password') {
+        // Återställ lösenord för ett konto. Gamla "kom ihåg mig"-tokens rensas
+        // så inloggade enheter med det gamla lösenordet loggas ut.
+        $uid = (int)($_POST['user_id'] ?? 0);
+        $pw  = (string)($_POST['new_password'] ?? '');
+        if ($uid > 0 && strlen($pw) >= 3) {
+            db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                ->execute([password_hash($pw, PASSWORD_DEFAULT), $uid]);
+            db()->prepare('DELETE FROM remember_tokens WHERE user_id = ?')->execute([$uid]);
+        }
     }
     header('Location: /admin.php'); exit;
 }
@@ -462,6 +472,7 @@ pageNav($user['name']);
             <th class="px-4 py-3">Roller</th>
             <th class="px-4 py-3">Skapad</th>
             <th class="px-4 py-3">Senast inloggad</th>
+            <th class="px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
@@ -477,6 +488,16 @@ pageNav($user['name']);
             </td>
             <td class="px-4 py-3 text-gray-500 whitespace-nowrap"><?= fmtTs($u['created_at']) ?></td>
             <td class="px-4 py-3 text-gray-500 whitespace-nowrap"><?= fmtTs($u['last_login']) ?></td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <form method="POST" class="inline" onsubmit="return promptNewPassword(this, '<?= htmlspecialchars(addslashes($u['name'])) ?>');">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf()) ?>">
+                <input type="hidden" name="admin_action" value="set_password">
+                <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
+                <input type="hidden" name="new_password" value="">
+                <button type="submit" title="Byt lösenord för <?= htmlspecialchars($u['name']) ?>"
+                        class="text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium">🔑</button>
+              </form>
+            </td>
           </tr>
           <?php endforeach; ?>
         </tbody>
@@ -593,4 +614,15 @@ pageNav($user['name']);
     </div>
   </section>
 </main>
+<script>
+function promptNewPassword(form, name) {
+  var pw = prompt('Nytt lösenord för ' + name + ' (minst 3 tecken):');
+  if (pw === null) return false;
+  pw = pw.trim();
+  if (pw.length < 3) { alert('För kort lösenord.'); return false; }
+  if (!confirm('Sätt lösenordet för ' + name + '? Alla inloggade enheter loggas ut.')) return false;
+  form.new_password.value = pw;
+  return true;
+}
+</script>
 <?php pageFoot(); ?>
